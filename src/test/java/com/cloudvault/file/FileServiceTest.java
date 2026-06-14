@@ -1,5 +1,7 @@
 package com.cloudvault.file;
 
+import com.cloudvault.audit.AuditAction;
+import com.cloudvault.audit.AuditService;
 import com.cloudvault.config.CloudVaultProperties;
 import com.cloudvault.error.InvalidFileException;
 import com.cloudvault.storage.ObjectStorage;
@@ -13,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
@@ -36,6 +39,9 @@ class FileServiceTest {
     @Mock
     private ObjectStorage objectStorage;
 
+    @Mock
+    private AuditService auditService;
+
     private FileService fileService;
     private UUID ownerId;
 
@@ -54,7 +60,7 @@ class FileServiceTest {
                         Duration.ofHours(1)
                 )
         );
-        fileService = new FileService(repository, objectStorage, properties);
+        fileService = new FileService(repository, objectStorage, auditService, properties);
         ownerId = UUID.randomUUID();
     }
 
@@ -84,6 +90,12 @@ class FileServiceTest {
                 .doesNotContain("client-contract");
         assertThat(response.originalName()).isEqualTo("client-contract.pdf");
         assertThat(response.sizeBytes()).isEqualTo(upload.getSize());
+        verify(auditService).record(
+                ownerId,
+                response.id(),
+                "client-contract.pdf",
+                AuditAction.FILE_UPLOADED
+        );
     }
 
     @Test
@@ -117,6 +129,37 @@ class FileServiceTest {
 
         verify(objectStorage).delete(file.getObjectKey());
         verify(repository).delete(file);
+        verify(auditService).record(
+                ownerId,
+                file.getId(),
+                file.getOriginalName(),
+                AuditAction.FILE_DELETED
+        );
+    }
+
+    @Test
+    void recordsStreamedDownloadsInAuditHistory() {
+        StoredFile file = StoredFile.createAvailable(
+                ownerId,
+                "statement.pdf",
+                "users/" + ownerId + "/files/" + UUID.randomUUID() + ".pdf",
+                "application/pdf",
+                9
+        );
+        when(repository.findByIdAndOwnerId(file.getId(), ownerId))
+                .thenReturn(Optional.of(file));
+        when(objectStorage.download(file.getObjectKey()))
+                .thenReturn(new ByteArrayInputStream("statement".getBytes()));
+
+        FileDownload download = fileService.download(ownerId, file.getId());
+
+        assertThat(download.filename()).isEqualTo("statement.pdf");
+        verify(auditService).record(
+                ownerId,
+                file.getId(),
+                file.getOriginalName(),
+                AuditAction.DOWNLOAD_LINK_CREATED
+        );
     }
 
     @Test
@@ -163,6 +206,12 @@ class FileServiceTest {
 
         assertThat(response.status()).isEqualTo(FileStatus.AVAILABLE);
         verify(repository).save(file);
+        verify(auditService).record(
+                ownerId,
+                file.getId(),
+                file.getOriginalName(),
+                AuditAction.FILE_UPLOADED
+        );
     }
 
     @Test

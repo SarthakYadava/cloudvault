@@ -43,6 +43,14 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(ShareLinkUnavailableException.class)
+    ResponseEntity<ApiError> handleShareLinkUnavailable(
+            ShareLinkUnavailableException exception,
+            HttpServletRequest request
+    ) {
+        return error(exception.getStatus(), exception.getMessage(), request);
+    }
+
     @ExceptionHandler(DuplicateEmailException.class)
     ResponseEntity<ApiError> handleDuplicateEmail(
             DuplicateEmailException exception,

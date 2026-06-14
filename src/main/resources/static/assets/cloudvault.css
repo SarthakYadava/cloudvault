@@ -768,6 +768,12 @@ svg {
     font-size: 0.76rem;
 }
 
+.file-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
 .search-box {
     position: relative;
     display: flex;
@@ -789,6 +795,24 @@ svg {
     border-radius: 11px;
     outline: none;
     background: rgba(255, 255, 255, 0.75);
+}
+
+.sort-box select,
+.share-form select {
+    min-height: 2.7rem;
+    padding: 0.65rem 2.25rem 0.65rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    color: var(--ink);
+    outline: none;
+    background: rgba(255, 255, 255, 0.82);
+}
+
+.search-box input:focus,
+.sort-box select:focus,
+.share-form select:focus {
+    border-color: #7ea493;
+    box-shadow: 0 0 0 3px rgba(71, 116, 95, 0.12);
 }
 
 .file-table-wrap {
@@ -896,6 +920,16 @@ svg {
     background: #e8eee9;
 }
 
+.table-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+
+.table-action:disabled:hover {
+    color: #6b7e77;
+    background: transparent;
+}
+
 .table-action.danger:hover {
     color: var(--danger);
     background: var(--danger-soft);
@@ -952,6 +986,234 @@ svg {
 .pagination span {
     color: var(--ink-soft);
     font-size: 0.75rem;
+}
+
+.activity-section {
+    margin-top: 3rem;
+    padding-bottom: 2rem;
+    scroll-margin-top: 1rem;
+}
+
+.section-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.section-heading h2 {
+    margin: 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.55rem;
+    font-weight: 500;
+}
+
+.section-heading p {
+    margin: 0.3rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.76rem;
+}
+
+.activity-list {
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    background: rgba(255, 253, 248, 0.8);
+    box-shadow: 0 12px 36px rgba(20, 54, 46, 0.06);
+}
+
+.activity-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.9rem 1rem;
+}
+
+.activity-item + .activity-item {
+    border-top: 1px solid #e6ebe7;
+}
+
+.activity-icon {
+    display: grid;
+    width: 2.35rem;
+    height: 2.35rem;
+    place-items: center;
+    border-radius: 11px;
+    color: var(--forest);
+    background: var(--mint);
+    font-size: 0.66rem;
+    font-weight: 900;
+}
+
+.activity-copy {
+    min-width: 0;
+}
+
+.activity-copy strong,
+.activity-copy span {
+    display: block;
+}
+
+.activity-copy strong {
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.activity-copy span,
+.activity-item time {
+    margin-top: 0.15rem;
+    color: var(--ink-soft);
+    font-size: 0.7rem;
+}
+
+.activity-item time {
+    margin: 0;
+    white-space: nowrap;
+}
+
+.activity-empty {
+    padding: 1.25rem;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-md);
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    text-align: center;
+}
+
+.share-dialog {
+    width: min(36rem, calc(100vw - 2rem));
+    max-height: min(42rem, calc(100vh - 2rem));
+    padding: 1.4rem;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    color: var(--ink);
+    background: var(--paper);
+    box-shadow: 0 24px 80px rgba(12, 36, 29, 0.28);
+}
+
+.share-dialog::backdrop {
+    background: rgba(15, 31, 27, 0.58);
+    backdrop-filter: blur(3px);
+}
+
+.dialog-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.dialog-heading h2 {
+    margin: 0.2rem 0 0;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.65rem;
+    font-weight: 500;
+}
+
+.dialog-heading p:not(.eyebrow) {
+    max-width: 30rem;
+    margin: 0.45rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.77rem;
+    line-height: 1.55;
+}
+
+.share-form {
+    display: flex;
+    align-items: end;
+    gap: 0.75rem;
+    margin-top: 1.3rem;
+}
+
+.share-form label {
+    display: grid;
+    flex: 1;
+    gap: 0.35rem;
+    color: var(--ink-soft);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.new-share-result {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid #bdd4c9;
+    border-radius: 13px;
+    background: #f2faf5;
+}
+
+.new-share-result strong,
+.new-share-result p {
+    display: block;
+}
+
+.new-share-result strong {
+    font-size: 0.8rem;
+}
+
+.new-share-result p {
+    margin: 0.25rem 0 0.7rem;
+    color: var(--ink-soft);
+    font-size: 0.7rem;
+}
+
+.copy-row {
+    display: flex;
+    gap: 0.55rem;
+}
+
+.copy-row input {
+    min-width: 0;
+    flex: 1;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--ink-soft);
+    background: white;
+    font-size: 0.7rem;
+}
+
+.share-history {
+    margin-top: 1.35rem;
+}
+
+.share-history h3 {
+    margin: 0 0 0.65rem;
+    font-size: 0.85rem;
+}
+
+.share-link-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.8rem 0;
+    border-top: 1px solid var(--line);
+}
+
+.share-link-item strong,
+.share-link-item span {
+    display: block;
+}
+
+.share-link-item strong {
+    font-size: 0.75rem;
+}
+
+.share-link-item span {
+    margin-top: 0.15rem;
+    color: var(--ink-soft);
+    font-size: 0.68rem;
+}
+
+.share-link-item.inactive {
+    opacity: 0.62;
 }
 
 .toast-region {
@@ -1088,7 +1350,16 @@ svg {
         flex-direction: column;
     }
 
+    .file-controls {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
     .search-box input {
+        width: 100%;
+    }
+
+    .sort-box select {
         width: 100%;
     }
 
@@ -1130,6 +1401,20 @@ svg {
 
     .file-name-cell strong {
         max-width: 9rem;
+    }
+
+    .activity-item {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .activity-item time {
+        display: none;
+    }
+
+    .share-form,
+    .copy-row {
+        align-items: stretch;
+        flex-direction: column;
     }
 }
 

@@ -6,7 +6,12 @@ const state = {
     page: 0,
     totalPages: 0,
     pageSize: 20,
-    uploadInProgress: false
+    uploadInProgress: false,
+    query: "",
+    sort: "uploadedAt",
+    direction: "desc",
+    searchTimer: null,
+    activeShareFile: null
 };
 
 const elements = {
@@ -37,6 +42,7 @@ const elements = {
     fileList: document.querySelector("#file-list"),
     fileCount: document.querySelector("#file-count"),
     fileSearch: document.querySelector("#file-search"),
+    fileSort: document.querySelector("#file-sort"),
     fileMessage: document.querySelector("#file-message"),
     emptyState: document.querySelector("#empty-state"),
     pagination: document.querySelector("#pagination"),
@@ -49,6 +55,25 @@ const elements = {
     logoutButton: document.querySelector("#logout-button"),
     menuButton: document.querySelector("#menu-button"),
     sidebar: document.querySelector(".sidebar"),
+    filesNav: document.querySelector("#files-nav"),
+    activityNav: document.querySelector("#activity-nav"),
+    activitySection: document.querySelector("#activity-section"),
+    activityList: document.querySelector("#activity-list"),
+    activityEmpty: document.querySelector("#activity-empty"),
+    activityMessage: document.querySelector("#activity-message"),
+    refreshActivity: document.querySelector("#refresh-activity"),
+    shareDialog: document.querySelector("#share-dialog"),
+    shareDialogTitle: document.querySelector("#share-dialog-title"),
+    closeShareDialog: document.querySelector("#close-share-dialog"),
+    shareForm: document.querySelector("#share-form"),
+    shareDuration: document.querySelector("#share-duration"),
+    createShareLink: document.querySelector("#create-share-link"),
+    shareMessage: document.querySelector("#share-message"),
+    newShareResult: document.querySelector("#new-share-result"),
+    newShareUrl: document.querySelector("#new-share-url"),
+    copyShareUrl: document.querySelector("#copy-share-url"),
+    shareLinkList: document.querySelector("#share-link-list"),
+    shareLinkEmpty: document.querySelector("#share-link-empty"),
     toastRegion: document.querySelector("#toast-region")
 };
 
@@ -58,7 +83,7 @@ function initialize() {
     bindEvents();
     if (state.token && state.user) {
         showWorkspace();
-        loadFiles();
+        Promise.all([loadFiles(), loadActivity()]);
     } else {
         clearSession();
         showAuth();
@@ -72,9 +97,21 @@ function bindEvents() {
     elements.togglePassword.addEventListener("click", togglePasswordVisibility);
     elements.logoutButton.addEventListener("click", logout);
     elements.menuButton.addEventListener("click", () => elements.sidebar.classList.toggle("open"));
-    elements.fileSearch.addEventListener("input", renderFiles);
+    elements.fileSearch.addEventListener("input", handleFileSearch);
+    elements.fileSort.addEventListener("change", handleFileSort);
     elements.previousPage.addEventListener("click", () => changePage(state.page - 1));
     elements.nextPage.addEventListener("click", () => changePage(state.page + 1));
+    elements.filesNav.addEventListener("click", () => scrollToSection(document.querySelector(".files-section")));
+    elements.activityNav.addEventListener("click", () => scrollToSection(elements.activitySection));
+    elements.refreshActivity.addEventListener("click", loadActivity);
+    elements.closeShareDialog.addEventListener("click", () => elements.shareDialog.close());
+    elements.shareForm.addEventListener("submit", createShareLink);
+    elements.copyShareUrl.addEventListener("click", copyNewShareUrl);
+    elements.shareDialog.addEventListener("click", event => {
+        if (event.target === elements.shareDialog) {
+            elements.shareDialog.close();
+        }
+    });
 
     [elements.headerUploadButton, elements.emptyUploadButton].forEach(button => {
         button.addEventListener("click", () => elements.fileInput.click());
@@ -171,7 +208,7 @@ async function handleAuth(event) {
         sessionStorage.setItem("cloudvault.user", JSON.stringify(state.user));
         elements.authForm.reset();
         showWorkspace();
-        await loadFiles();
+        await Promise.all([loadFiles(), loadActivity()]);
         toast(state.mode === "register" ? "Account created" : "Welcome back", `Signed in as ${state.user.email}.`);
     } catch (error) {
         showMessage(elements.authMessage, error.message);
@@ -205,6 +242,7 @@ function logout() {
     clearSession();
     state.files = [];
     renderFiles();
+    elements.activityList.replaceChildren();
     showAuth();
     setAuthMode("login");
     toast("Signed out", "Your browser session has been cleared.");
@@ -214,10 +252,18 @@ async function loadFiles() {
     hideMessage(elements.fileMessage);
     elements.fileCount.textContent = "Loading your files...";
     try {
-        const page = await apiFetch(`/api/files?page=${state.page}&size=${state.pageSize}`);
+        const params = new URLSearchParams({
+            page: state.page,
+            size: state.pageSize,
+            query: state.query,
+            sort: state.sort,
+            direction: state.direction
+        });
+        const page = await apiFetch(`/api/files?${params}`);
         state.files = page.content;
         state.totalPages = page.totalPages;
-        elements.fileCount.textContent = `${page.totalElements} ${page.totalElements === 1 ? "document" : "documents"} in your vault`;
+        const suffix = state.query ? ` matching "${state.query}"` : " in your vault";
+        elements.fileCount.textContent = `${page.totalElements} ${page.totalElements === 1 ? "document" : "documents"}${suffix}`;
         renderFiles();
         renderPagination();
     } catch (error) {
@@ -227,15 +273,9 @@ async function loadFiles() {
 }
 
 function renderFiles() {
-    const query = elements.fileSearch.value.trim().toLowerCase();
-    const visibleFiles = state.files.filter(file => file.originalName.toLowerCase().includes(query));
-    elements.fileList.replaceChildren(...visibleFiles.map(createFileRow));
-    elements.emptyState.classList.toggle("hidden", visibleFiles.length > 0);
-    document.querySelector(".file-table").classList.toggle("hidden", visibleFiles.length === 0);
-
-    if (query) {
-        elements.fileCount.textContent = `${visibleFiles.length} matching ${visibleFiles.length === 1 ? "document" : "documents"}`;
-    }
+    elements.fileList.replaceChildren(...state.files.map(createFileRow));
+    elements.emptyState.classList.toggle("hidden", state.files.length > 0);
+    document.querySelector(".file-table").classList.toggle("hidden", state.files.length === 0);
 }
 
 function createFileRow(file) {
@@ -252,6 +292,10 @@ function createFileRow(file) {
         <td>${formatBytes(file.sizeBytes)}</td>
         <td>${formatDate(file.uploadedAt)}</td>
         <td class="actions-cell">
+            <button class="table-action share-action" type="button" aria-label="Share ${escapeHtml(file.originalName)}"
+                    ${file.status !== "AVAILABLE" ? "disabled" : ""}>
+                <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg>
+            </button>
             <button class="table-action download-action" type="button" aria-label="Download ${escapeHtml(file.originalName)}"
                     ${file.status !== "AVAILABLE" ? "disabled" : ""}>
                 <svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg>
@@ -261,9 +305,25 @@ function createFileRow(file) {
             </button>
         </td>
     `;
+    row.querySelector(".share-action").addEventListener("click", () => openShareDialog(file));
     row.querySelector(".download-action").addEventListener("click", () => downloadFile(file));
     row.querySelector(".delete-action").addEventListener("click", () => deleteFile(file));
     return row;
+}
+
+function handleFileSearch() {
+    window.clearTimeout(state.searchTimer);
+    state.searchTimer = window.setTimeout(() => {
+        state.query = elements.fileSearch.value.trim();
+        state.page = 0;
+        loadFiles();
+    }, 280);
+}
+
+function handleFileSort() {
+    [state.sort, state.direction] = elements.fileSort.value.split(",");
+    state.page = 0;
+    loadFiles();
 }
 
 function renderPagination() {
@@ -279,6 +339,138 @@ async function changePage(page) {
     }
     state.page = page;
     await loadFiles();
+}
+
+async function loadActivity() {
+    hideMessage(elements.activityMessage);
+    try {
+        const page = await apiFetch("/api/activity?page=0&size=12");
+        elements.activityList.replaceChildren(...page.content.map(createActivityItem));
+        elements.activityList.classList.toggle("hidden", page.content.length === 0);
+        elements.activityEmpty.classList.toggle("hidden", page.content.length > 0);
+    } catch (error) {
+        showMessage(elements.activityMessage, error.message);
+    }
+}
+
+function createActivityItem(event) {
+    const item = document.createElement("article");
+    item.className = "activity-item";
+    const details = activityDetails(event.action);
+    item.innerHTML = `
+        <span class="activity-icon">${details.code}</span>
+        <div class="activity-copy">
+            <strong>${escapeHtml(event.filename || "Deleted file")}</strong>
+            <span>${details.label}</span>
+        </div>
+        <time datetime="${escapeHtml(event.occurredAt)}">${formatDateTime(event.occurredAt)}</time>
+    `;
+    return item;
+}
+
+function activityDetails(action) {
+    const details = {
+        FILE_UPLOADED: {code: "UP", label: "Uploaded to private storage"},
+        DOWNLOAD_LINK_CREATED: {code: "DL", label: "Secure download requested"},
+        FILE_DELETED: {code: "DEL", label: "Removed from the vault"},
+        SHARE_LINK_CREATED: {code: "SH", label: "Expiring share link created"},
+        SHARE_LINK_REVOKED: {code: "RV", label: "Share link revoked"},
+        SHARED_FILE_ACCESSED: {code: "AC", label: "Shared link accessed"}
+    };
+    return details[action] || {code: "EV", label: action.replaceAll("_", " ").toLowerCase()};
+}
+
+async function openShareDialog(file) {
+    state.activeShareFile = file;
+    elements.shareDialogTitle.textContent = `Share ${file.originalName}`;
+    elements.newShareResult.classList.add("hidden");
+    elements.newShareUrl.value = "";
+    hideMessage(elements.shareMessage);
+    elements.shareDialog.showModal();
+    await loadShareLinks(file.id);
+}
+
+async function loadShareLinks(fileId) {
+    try {
+        const links = await apiFetch(`/api/files/${fileId}/shares`);
+        elements.shareLinkList.replaceChildren(...links.map(createShareLinkItem));
+        elements.shareLinkEmpty.classList.toggle("hidden", links.length > 0);
+    } catch (error) {
+        showMessage(elements.shareMessage, error.message);
+    }
+}
+
+function createShareLinkItem(link) {
+    const item = document.createElement("div");
+    item.className = `share-link-item${link.active ? "" : " inactive"}`;
+    const status = link.active ? `Expires ${formatDateTime(link.expiresAt)}` : "Expired or revoked";
+    item.innerHTML = `
+        <div>
+            <strong>${link.active ? "Active link" : "Inactive link"}</strong>
+            <span>${escapeHtml(status)} | Created ${escapeHtml(formatDateTime(link.createdAt))}</span>
+        </div>
+        ${link.active ? `<button class="secondary-button compact revoke-share-link" type="button">Revoke</button>` : ""}
+    `;
+    const revokeButton = item.querySelector(".revoke-share-link");
+    if (revokeButton) {
+        revokeButton.addEventListener("click", () => revokeShareLink(link.id));
+    }
+    return item;
+}
+
+async function createShareLink(event) {
+    event.preventDefault();
+    if (!state.activeShareFile) {
+        return;
+    }
+    hideMessage(elements.shareMessage);
+    setShareButtonBusy(true);
+    try {
+        const link = await apiFetch(`/api/files/${state.activeShareFile.id}/shares`, {
+            method: "POST",
+            body: JSON.stringify({expirationMinutes: Number(elements.shareDuration.value)})
+        });
+        elements.newShareUrl.value = link.shareUrl;
+        elements.newShareResult.classList.remove("hidden");
+        await Promise.all([loadShareLinks(state.activeShareFile.id), loadActivity()]);
+        toast("Share link created", `Expires ${formatDateTime(link.expiresAt)}.`);
+    } catch (error) {
+        showMessage(elements.shareMessage, error.message);
+    } finally {
+        setShareButtonBusy(false);
+    }
+}
+
+async function revokeShareLink(linkId) {
+    try {
+        await apiFetch(`/api/shares/${linkId}`, {method: "DELETE"});
+        elements.newShareResult.classList.add("hidden");
+        await Promise.all([loadShareLinks(state.activeShareFile.id), loadActivity()]);
+        toast("Share link revoked", "The link can no longer be used.");
+    } catch (error) {
+        showMessage(elements.shareMessage, error.message);
+    }
+}
+
+async function copyNewShareUrl() {
+    try {
+        await navigator.clipboard.writeText(elements.newShareUrl.value);
+        toast("Link copied", "The expiring URL is ready to share.");
+    } catch {
+        elements.newShareUrl.select();
+        document.execCommand("copy");
+        toast("Link copied", "The expiring URL is ready to share.");
+    }
+}
+
+function setShareButtonBusy(busy) {
+    elements.createShareLink.disabled = busy;
+    elements.createShareLink.querySelector("span").textContent = busy ? "Creating link..." : "Create secure link";
+}
+
+function scrollToSection(section) {
+    section.scrollIntoView({behavior: "smooth", block: "start"});
+    elements.sidebar.classList.remove("open");
 }
 
 async function uploadFile(file) {
@@ -327,7 +519,7 @@ async function uploadFile(file) {
         window.setTimeout(() => elements.uploadProgress.classList.add("hidden"), 850);
         state.uploadInProgress = false;
         state.page = 0;
-        await loadFiles();
+        await Promise.all([loadFiles(), loadActivity()]);
     }
 }
 
@@ -388,6 +580,7 @@ async function downloadFile(file) {
         const response = await apiFetch(`/api/files/${file.id}/download-url`);
         window.location.assign(response.downloadUrl);
         toast("Download started", file.originalName);
+        await loadActivity();
     } catch (error) {
         toast("Download failed", error.message, true);
     }
@@ -400,7 +593,7 @@ async function deleteFile(file) {
     try {
         await apiFetch(`/api/files/${file.id}`, {method: "DELETE"});
         toast("File deleted", file.originalName);
-        await loadFiles();
+        await Promise.all([loadFiles(), loadActivity()]);
     } catch (error) {
         toast("Delete failed", error.message, true);
     }
@@ -520,6 +713,15 @@ function formatDate(value) {
         month: "short",
         day: "numeric",
         year: "numeric"
+    }).format(new Date(value));
+}
+
+function formatDateTime(value) {
+    return new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
     }).format(new Date(value));
 }
 

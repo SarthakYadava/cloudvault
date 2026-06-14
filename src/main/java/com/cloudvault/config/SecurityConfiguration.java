@@ -48,6 +48,7 @@ public class SecurityConfiguration {
                                 "/assets/**",
                                 "/favicon.svg",
                                 "/error",
+                                "/s/**",
                                 "/actuator/health",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",

@@ -119,6 +119,14 @@ class AuthenticationIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.content[0].originalName").value("first.pdf"));
 
+        mockMvc.perform(get("/api/files")
+                        .param("query", "second")
+                        .param("sort", "name")
+                        .param("direction", "asc")
+                        .header("Authorization", "Bearer " + firstToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+
         assertThat(secondToken).isNotBlank();
     }
 

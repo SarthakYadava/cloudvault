@@ -1,5 +1,7 @@
 package com.cloudvault.file;
 
+import com.cloudvault.audit.AuditAction;
+import com.cloudvault.audit.AuditService;
 import com.cloudvault.config.CloudVaultProperties;
 import com.cloudvault.error.FileNotFoundException;
 import com.cloudvault.error.FileNotReadyException;
@@ -10,6 +12,7 @@ import com.cloudvault.storage.StoredObjectMetadata;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -29,6 +32,7 @@ public class FileService {
 
     private final StoredFileRepository repository;
     private final ObjectStorage objectStorage;
+    private final AuditService auditService;
     private final long maxSizeBytes;
     private final Set<String> allowedContentTypes;
     private final Duration presignedUrlExpiration;
@@ -36,10 +40,12 @@ public class FileService {
     public FileService(
             StoredFileRepository repository,
             ObjectStorage objectStorage,
+            AuditService auditService,
             CloudVaultProperties properties
     ) {
         this.repository = repository;
         this.objectStorage = objectStorage;
+        this.auditService = auditService;
         this.maxSizeBytes = properties.files().maxSizeBytes();
         this.allowedContentTypes = properties.files().allowedContentTypes();
         this.presignedUrlExpiration = properties.files().presignedUrlExpiration();
@@ -67,7 +73,14 @@ public class FileService {
         );
 
         try {
-            return FileResponse.from(repository.save(storedFile));
+            StoredFile saved = repository.save(storedFile);
+            auditService.record(
+                    ownerId,
+                    saved.getId(),
+                    saved.getOriginalName(),
+                    AuditAction.FILE_UPLOADED
+            );
+            return FileResponse.from(saved);
         } catch (DataAccessException exception) {
             compensateUpload(objectKey, exception);
             throw exception;
@@ -130,11 +143,25 @@ public class FileService {
         }
 
         file.markAvailable();
-        return FileResponse.from(repository.save(file));
+        StoredFile saved = repository.save(file);
+        auditService.record(
+                ownerId,
+                saved.getId(),
+                saved.getOriginalName(),
+                AuditAction.FILE_UPLOADED
+        );
+        return FileResponse.from(saved);
     }
 
     @Transactional(readOnly = true)
-    public Page<FileResponse> list(UUID ownerId, int page, int size) {
+    public Page<FileResponse> list(
+            UUID ownerId,
+            int page,
+            int size,
+            String query,
+            String sortBy,
+            String direction
+    ) {
         if (page < 0) {
             throw new InvalidFileException("Page number cannot be negative.");
         }
@@ -142,18 +169,30 @@ public class FileService {
             throw new InvalidFileException("Page size must be between 1 and 100.");
         }
 
-        return repository.findAllByOwnerIdOrderByUploadedAtDesc(
+        String normalizedQuery = query == null ? "" : query.trim();
+        if (normalizedQuery.length() > 100) {
+            throw new InvalidFileException("Search query cannot exceed 100 characters.");
+        }
+
+        Sort sort = Sort.by(parseDirection(direction), parseSortProperty(sortBy));
+        return repository.searchByOwner(
                         ownerId,
-                        PageRequest.of(page, size)
+                        normalizedQuery,
+                        PageRequest.of(page, size, sort)
                 )
                 .map(FileResponse::from);
     }
 
-    @Transactional(readOnly = true)
     public FileDownload download(UUID ownerId, UUID id) {
         StoredFile file = findFile(ownerId, id);
         ensureAvailable(file);
         InputStream content = objectStorage.download(file.getObjectKey());
+        auditService.record(
+                ownerId,
+                file.getId(),
+                file.getOriginalName(),
+                AuditAction.DOWNLOAD_LINK_CREATED
+        );
         return new FileDownload(
                 file.getOriginalName(),
                 file.getContentType(),
@@ -171,6 +210,12 @@ public class FileService {
                 file.getOriginalName(),
                 presignedUrlExpiration
         );
+        auditService.record(
+                ownerId,
+                file.getId(),
+                file.getOriginalName(),
+                AuditAction.DOWNLOAD_LINK_CREATED
+        );
         return new DownloadUrlResponse(url.url(), url.method(), url.expiresAt());
     }
 
@@ -178,6 +223,12 @@ public class FileService {
         StoredFile file = findFile(ownerId, id);
         objectStorage.delete(file.getObjectKey());
         repository.delete(file);
+        auditService.record(
+                ownerId,
+                file.getId(),
+                file.getOriginalName(),
+                AuditAction.FILE_DELETED
+        );
     }
 
     private StoredFile findFile(UUID ownerId, UUID id) {
@@ -262,5 +313,28 @@ public class FileService {
         if (file.getStatus() != FileStatus.AVAILABLE) {
             throw new FileNotReadyException("The file upload has not been completed.");
         }
+    }
+
+    private String parseSortProperty(String sortBy) {
+        if (sortBy == null || sortBy.isBlank() || sortBy.equals("uploadedAt")) {
+            return "uploadedAt";
+        }
+        return switch (sortBy) {
+            case "name" -> "originalName";
+            case "size" -> "sizeBytes";
+            default -> throw new InvalidFileException(
+                    "Sort field must be uploadedAt, name, or size."
+            );
+        };
+    }
+
+    private Sort.Direction parseDirection(String direction) {
+        if (direction == null || direction.isBlank() || direction.equalsIgnoreCase("desc")) {
+            return Sort.Direction.DESC;
+        }
+        if (direction.equalsIgnoreCase("asc")) {
+            return Sort.Direction.ASC;
+        }
+        throw new InvalidFileException("Sort direction must be asc or desc.");
     }
 }

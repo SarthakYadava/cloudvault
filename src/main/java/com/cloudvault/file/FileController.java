@@ -52,9 +52,12 @@ public class FileController {
     public Page<FileResponse> list(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "") String query,
+            @RequestParam(defaultValue = "uploadedAt") String sort,
+            @RequestParam(defaultValue = "desc") String direction
     ) {
-        return fileService.list(userId(jwt), page, size);
+        return fileService.list(userId(jwt), page, size, query, sort, direction);
     }
 
     @PostMapping("/upload-requests")

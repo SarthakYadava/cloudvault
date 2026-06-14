@@ -128,14 +128,13 @@
             </a>
 
             <nav class="side-nav" aria-label="Workspace navigation">
-                <button class="nav-item active" type="button">
+                <button id="files-nav" class="nav-item active" type="button">
                     <svg viewBox="0 0 24 24"><path d="M3 8l9-5 9 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z"/><path d="M9 21v-8h6v8"/></svg>
                     My files
                 </button>
-                <button class="nav-item disabled" type="button" aria-disabled="true">
-                    <svg viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3"/></svg>
-                    Shared
-                    <span class="soon">Soon</span>
+                <button id="activity-nav" class="nav-item" type="button">
+                    <svg viewBox="0 0 24 24"><path d="M12 8v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+                    Activity
                 </button>
                 <button class="nav-item disabled" type="button" aria-disabled="true">
                     <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>
@@ -210,10 +209,23 @@
                             <h2>Documents</h2>
                             <p id="file-count">Loading your files...</p>
                         </div>
-                        <label class="search-box">
-                            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-                            <input id="file-search" type="search" placeholder="Search files" autocomplete="off">
-                        </label>
+                        <div class="file-controls">
+                            <label class="search-box">
+                                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+                                <input id="file-search" type="search" placeholder="Search all files" autocomplete="off">
+                            </label>
+                            <label class="sort-box">
+                                <span class="sr-only">Sort documents</span>
+                                <select id="file-sort">
+                                    <option value="uploadedAt,desc">Newest first</option>
+                                    <option value="uploadedAt,asc">Oldest first</option>
+                                    <option value="name,asc">Name A-Z</option>
+                                    <option value="name,desc">Name Z-A</option>
+                                    <option value="size,desc">Largest first</option>
+                                    <option value="size,asc">Smallest first</option>
+                                </select>
+                            </label>
+                        </div>
                     </div>
 
                     <div id="file-message" class="form-message hidden" role="alert"></div>
@@ -248,10 +260,69 @@
                         <button id="next-page" class="secondary-button compact" type="button">Next</button>
                     </div>
                 </section>
+
+                <section id="activity-section" class="activity-section">
+                    <div class="section-heading">
+                        <div>
+                            <h2>Recent activity</h2>
+                            <p>A private record of important file actions in your account.</p>
+                        </div>
+                        <button id="refresh-activity" class="secondary-button compact" type="button">Refresh</button>
+                    </div>
+                    <div id="activity-message" class="form-message hidden" role="alert"></div>
+                    <div id="activity-list" class="activity-list"></div>
+                    <div id="activity-empty" class="activity-empty hidden">
+                        Activity will appear after you upload, download, share, or delete a file.
+                    </div>
+                </section>
             </div>
         </div>
     </section>
 </main>
+
+<dialog id="share-dialog" class="share-dialog">
+    <div class="dialog-heading">
+        <div>
+            <p class="eyebrow">Controlled sharing</p>
+            <h2 id="share-dialog-title">Share document</h2>
+            <p>Create a link that expires automatically. Anyone with the link can download the file until then.</p>
+        </div>
+        <button id="close-share-dialog" class="icon-button" type="button" aria-label="Close share dialog">
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+    </div>
+
+    <form id="share-form" class="share-form">
+        <label>
+            Link duration
+            <select id="share-duration">
+                <option value="60">1 hour</option>
+                <option value="1440" selected>24 hours</option>
+                <option value="10080">7 days</option>
+            </select>
+        </label>
+        <button id="create-share-link" class="primary-button" type="submit">
+            <span>Create secure link</span>
+        </button>
+    </form>
+
+    <div id="share-message" class="form-message hidden" role="alert"></div>
+
+    <div id="new-share-result" class="new-share-result hidden">
+        <strong>Copy this link now</strong>
+        <p>For security, CloudVault only shows the full URL once.</p>
+        <div class="copy-row">
+            <input id="new-share-url" type="text" readonly aria-label="New share URL">
+            <button id="copy-share-url" class="secondary-button compact" type="button">Copy</button>
+        </div>
+    </div>
+
+    <div class="share-history">
+        <h3>Link history</h3>
+        <div id="share-link-list"></div>
+        <p id="share-link-empty" class="activity-empty hidden">No share links have been created for this file.</p>
+    </div>
+</dialog>
 
 <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 <script src="/assets/cloudvault.js" defer></script>
