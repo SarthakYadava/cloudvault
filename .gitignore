@@ -1,0 +1,14 @@
+.gradle/
+.gradle-user-home/
+build/
+out/
+.idea/
+.vscode/
+*.iml
+
+.env
+application-local.yml
+
+*.log
+
+repo-review/

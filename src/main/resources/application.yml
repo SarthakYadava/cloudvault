@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: cloudvault
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/cloudvault}
+    username: ${DB_USERNAME:cloudvault}
+    password: ${DB_PASSWORD:cloudvault}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+
+cloudvault:
+  aws:
+    region: ${AWS_REGION:eu-north-1}
+    bucket: ${S3_BUCKET:file-java90}
+  files:
+    max-size-bytes: 10485760
+    presigned-url-expiration: ${PRESIGNED_URL_EXPIRATION:PT10M}
+    allowed-content-types:
+      - application/pdf
+      - image/jpeg
+      - image/png
+      - text/plain
+  auth:
+    jwt-secret: ${JWT_SECRET}
+    issuer: cloudvault
+    token-expiration: ${JWT_EXPIRATION:PT1H}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
