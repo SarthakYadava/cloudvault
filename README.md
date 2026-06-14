@@ -1,17 +1,21 @@
 # CloudVault
 
-CloudVault is a private document-storage API built with Spring Boot, PostgreSQL,
-and Amazon S3. It is designed as the backend for a client document exchange
-portal used by small professional-service teams.
+CloudVault is a private document workspace built with Spring Boot, PostgreSQL,
+and Amazon S3. It is designed as a secure client document exchange portal for
+small professional-service teams.
 
-The current backend includes account registration, JWT login, per-user file
-ownership, and a production-minded S3 foundation. Presigned browser transfers
-and a web dashboard are planned for the next milestones.
+The application includes account registration, JWT login, per-user file
+ownership, presigned browser transfers, and a responsive web dashboard.
 
 ## Current Features
 
 - Upload PDF, PNG, JPEG, and text files up to 10 MB.
+- Use a responsive dashboard with registration, login, search, upload progress,
+  downloads, and deletion controls.
+- Drag files onto the page or select them from the system file picker.
 - Transfer files directly between clients and private S3 using expiring URLs.
+- Fall back to authenticated server uploads when direct browser-to-S3 CORS is
+  not configured.
 - Verify direct uploads with S3 before marking metadata as available.
 - Register users and authenticate with short-lived JWT access tokens.
 - Hash passwords with BCrypt; plaintext passwords are never stored.
@@ -107,6 +111,7 @@ Run the application:
 
 Useful URLs:
 
+- Dashboard: `http://localhost:8080/`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - API specification: `http://localhost:8080/v3/api-docs`
 - Health check: `http://localhost:8080/actuator/health`
@@ -149,6 +154,17 @@ For direct browser uploads:
 The completion call rejects and removes objects whose S3 size or content type
 does not match the original upload request.
 
+## Dashboard
+
+Open `http://localhost:8080/` after starting the application. The dashboard:
+
+- Stores the JWT only in browser session storage, so closing the browser clears
+  the local session.
+- Shows only files owned by the authenticated account.
+- Prefers short-lived direct S3 upload URLs and verifies each upload afterward.
+- Falls back to the multipart API when S3 browser CORS is unavailable.
+- Uses temporary S3 download URLs and never exposes AWS credentials.
+
 ## Configuration
 
 | Environment variable | Default | Description |
@@ -183,8 +199,7 @@ the project production-ready.
 
 ## Roadmap
 
-1. Add filename search, audit events, and expiring share links.
+1. Add server-side filename search, audit events, and expiring share links.
 2. Add LocalStack and Testcontainers integration tests.
-3. Build a Thymeleaf drag-and-drop dashboard.
-4. Add refresh tokens, logout/revocation, and account management.
-5. Deploy the API and database with infrastructure as code.
+3. Add refresh tokens, logout/revocation, and account management.
+4. Deploy the application and database with infrastructure as code.
