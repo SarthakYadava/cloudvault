@@ -4,7 +4,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import com.cloudvault.file.DownloadUrlResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -111,6 +115,39 @@ public class WorkspaceController {
                 workspaceId,
                 requestId,
                 request
+        );
+    }
+
+    @PostMapping(
+            value = "/{workspaceId}/requests/{requestId}/submission",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    @Operation(summary = "Upload a file for a document request")
+    public DocumentRequestResponse uploadSubmission(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID requestId,
+            @RequestParam("file") MultipartFile file
+    ) {
+        return workspaceService.uploadSubmission(
+                userId(jwt),
+                workspaceId,
+                requestId,
+                file
+        );
+    }
+
+    @GetMapping("/{workspaceId}/requests/{requestId}/submission/download-url")
+    @Operation(summary = "Create a temporary URL for a submitted file")
+    public DownloadUrlResponse createSubmissionDownloadUrl(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID workspaceId,
+            @PathVariable UUID requestId
+    ) {
+        return workspaceService.createSubmissionDownloadUrl(
+                userId(jwt),
+                workspaceId,
+                requestId
         );
     }
 

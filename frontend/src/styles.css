@@ -1446,6 +1446,40 @@ select:focus {
     line-height: 1.45;
 }
 
+.submission-file {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.58rem;
+    margin-top: 0.62rem;
+    padding: 0.62rem;
+    border: 1px solid #dec8d4;
+    border-radius: 10px;
+    background: var(--burgundy-soft);
+}
+
+.submission-file > div {
+    min-width: 0;
+}
+
+.submission-file strong,
+.submission-file small {
+    display: block;
+}
+
+.submission-file strong {
+    overflow: hidden;
+    font-size: 0.68rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.submission-file small {
+    margin-top: 0.12rem;
+    color: var(--ink-soft);
+    font-size: 0.58rem;
+}
+
 .request-status.pending {
     color: #8a6500;
     background: #fff4c6;
@@ -1465,6 +1499,27 @@ select:focus {
     margin-top: 0.58rem;
     padding-top: 0.55rem;
     border-top: 1px solid var(--line-soft);
+}
+
+.request-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.42rem;
+}
+
+.submission-button {
+    cursor: pointer;
+}
+
+.submission-button.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.submission-button svg {
+    width: 0.82rem;
+    height: 0.82rem;
 }
 
 .workspace-request-empty {

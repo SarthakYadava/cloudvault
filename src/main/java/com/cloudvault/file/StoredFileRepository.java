@@ -24,4 +24,16 @@ public interface StoredFileRepository extends JpaRepository<StoredFile, UUID> {
     );
 
     Optional<StoredFile> findByIdAndOwnerId(UUID id, UUID ownerId);
+
+    @Query(
+            value = """
+                    select exists (
+                        select 1
+                        from document_requests request
+                        where request.submitted_file_id = :fileId
+                    )
+                    """,
+            nativeQuery = true
+    )
+    boolean isAttachedToDocumentRequest(@Param("fileId") UUID fileId);
 }

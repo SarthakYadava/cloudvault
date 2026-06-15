@@ -105,6 +105,84 @@ describe("CloudVault React application", () => {
         expect(window.confirm).toHaveBeenCalled();
         expect(await screen.findByText("Create your first client workspace")).toBeInTheDocument();
     });
+
+    it("allows an assigned client to upload a request submission", async () => {
+        sessionStorage.setItem("cloudvault.token", "test-token");
+        sessionStorage.setItem("cloudvault.user", JSON.stringify({
+            id: "client-id",
+            name: "Client User",
+            email: "client@example.com",
+            role: "USER"
+        }));
+        let requestReads = 0;
+        const pendingRequest = {
+            id: "request-1",
+            workspaceId: "workspace-1",
+            title: "Signed agreement",
+            description: "Upload the signed PDF.",
+            assignedTo: "client-id",
+            assigneeName: "Client User",
+            assigneeEmail: "client@example.com",
+            status: "PENDING",
+            submittedFileId: null,
+            dueDate: "2030-01-15"
+        };
+        const fetchMock = vi.fn(async (url, options = {}) => {
+            if (String(url).startsWith("/api/files")) {
+                return jsonResponse({content: [], totalPages: 0, totalElements: 0});
+            }
+            if (String(url).startsWith("/api/activity")) {
+                return jsonResponse({content: [], totalPages: 0, totalElements: 0});
+            }
+            if (String(url) === "/api/workspaces") {
+                return jsonResponse([{
+                    id: "workspace-1",
+                    name: "Acme Legal",
+                    role: "CLIENT",
+                    memberCount: 2,
+                    pendingRequestCount: requestReads === 0 ? 1 : 0
+                }]);
+            }
+            if (String(url) === "/api/workspaces/workspace-1/members") {
+                return jsonResponse([]);
+            }
+            if (String(url) === "/api/workspaces/workspace-1/requests"
+                    && !options.method) {
+                requestReads += 1;
+                return jsonResponse([requestReads === 1 ? pendingRequest : {
+                    ...pendingRequest,
+                    status: "SUBMITTED",
+                    submittedFileId: "file-1",
+                    submittedFileName: "signed.pdf",
+                    submittedFileSizeBytes: 8,
+                    submittedByName: "Client User"
+                }]);
+            }
+            if (String(url) === "/api/workspaces/workspace-1/requests/request-1/submission"
+                    && options.method === "POST") {
+                return jsonResponse({});
+            }
+            throw new Error(`Unexpected request: ${url}`);
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        render(<App/>);
+
+        await screen.findByText("Signed agreement");
+        const input = document.querySelector(".submission-button input[type='file']");
+        const file = new File(["signed"], "signed.pdf", {type: "application/pdf"});
+        fireEvent.change(input, {target: {files: [file]}});
+
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+            "/api/workspaces/workspace-1/requests/request-1/submission",
+            expect.objectContaining({
+                method: "POST",
+                body: expect.any(FormData)
+            })
+        ));
+        expect(await screen.findByText("signed.pdf")).toBeInTheDocument();
+        expect(screen.getByText("Submitted by Client User", {exact: false})).toBeInTheDocument();
+    });
 });
 
 function jsonResponse(body) {

@@ -1,5 +1,6 @@
 package com.cloudvault.workspace;
 
+import com.cloudvault.file.StoredFile;
 import com.cloudvault.user.UserAccount;
 
 import java.time.Instant;
@@ -16,6 +17,10 @@ public record DocumentRequestResponse(
         String assigneeEmail,
         LocalDate dueDate,
         DocumentRequestStatus status,
+        UUID submittedFileId,
+        String submittedFileName,
+        Long submittedFileSizeBytes,
+        String submittedByName,
         Instant createdAt,
         Instant submittedAt,
         Instant approvedAt
@@ -23,7 +28,9 @@ public record DocumentRequestResponse(
 
     static DocumentRequestResponse from(
             DocumentRequest request,
-            UserAccount assignee
+            UserAccount assignee,
+            StoredFile submission,
+            UserAccount submittedBy
     ) {
         return new DocumentRequestResponse(
                 request.getId(),
@@ -35,6 +42,10 @@ public record DocumentRequestResponse(
                 assignee == null ? null : assignee.getEmail(),
                 request.getDueDate(),
                 request.getStatus(),
+                submission == null ? null : submission.getId(),
+                submission == null ? null : submission.getOriginalName(),
+                submission == null ? null : submission.getSizeBytes(),
+                submittedBy == null ? null : submittedBy.getName(),
                 request.getCreatedAt(),
                 request.getSubmittedAt(),
                 request.getApprovedAt()

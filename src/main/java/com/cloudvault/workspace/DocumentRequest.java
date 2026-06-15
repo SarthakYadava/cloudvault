@@ -49,6 +49,9 @@ public class DocumentRequest {
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    @Column(name = "submitted_file_id")
+    private UUID submittedFileId;
+
     protected DocumentRequest() {
     }
 
@@ -99,6 +102,11 @@ public class DocumentRequest {
         status = DocumentRequestStatus.SUBMITTED;
         submittedAt = Instant.now();
         approvedAt = null;
+    }
+
+    public void attachSubmission(UUID fileId) {
+        submittedFileId = fileId;
+        markSubmitted();
     }
 
     public void markApproved() {
@@ -154,5 +162,9 @@ public class DocumentRequest {
 
     public Instant getApprovedAt() {
         return approvedAt;
+    }
+
+    public UUID getSubmittedFileId() {
+        return submittedFileId;
     }
 }

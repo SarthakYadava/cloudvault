@@ -3,11 +3,17 @@ package com.cloudvault.workspace;
 import com.cloudvault.error.InvalidWorkspaceException;
 import com.cloudvault.error.WorkspaceAccessException;
 import com.cloudvault.error.WorkspaceNotFoundException;
+import com.cloudvault.file.DownloadUrlResponse;
+import com.cloudvault.file.FileResponse;
+import com.cloudvault.file.FileService;
+import com.cloudvault.file.StoredFile;
+import com.cloudvault.file.StoredFileRepository;
 import com.cloudvault.user.UserAccount;
 import com.cloudvault.user.UserAccountRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -25,17 +31,23 @@ public class WorkspaceService {
     private final WorkspaceMembershipRepository membershipRepository;
     private final DocumentRequestRepository requestRepository;
     private final UserAccountRepository userRepository;
+    private final StoredFileRepository fileRepository;
+    private final FileService fileService;
 
     public WorkspaceService(
             WorkspaceRepository workspaceRepository,
             WorkspaceMembershipRepository membershipRepository,
             DocumentRequestRepository requestRepository,
-            UserAccountRepository userRepository
+            UserAccountRepository userRepository,
+            StoredFileRepository fileRepository,
+            FileService fileService
     ) {
         this.workspaceRepository = workspaceRepository;
         this.membershipRepository = membershipRepository;
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
+        this.fileRepository = fileRepository;
+        this.fileService = fileService;
     }
 
     @Transactional
@@ -150,6 +162,13 @@ public class WorkspaceService {
         requireMembership(userId, workspaceId);
         List<DocumentRequest> requests =
                 requestRepository.findAllByWorkspaceIdOrderByCreatedAtDesc(workspaceId);
+        Map<UUID, StoredFile> submissions = filesById(
+                requests.stream()
+                        .map(DocumentRequest::getSubmittedFileId)
+                        .filter(java.util.Objects::nonNull)
+                        .distinct()
+                        .toList()
+        );
         Map<UUID, UserAccount> assignees = usersById(
                 requests.stream()
                         .map(DocumentRequest::getAssignedTo)
@@ -157,11 +176,14 @@ public class WorkspaceService {
                         .distinct()
                         .toList()
         );
+        Map<UUID, UserAccount> submitters = usersById(
+                submissions.values().stream()
+                        .map(StoredFile::getOwnerId)
+                        .distinct()
+                        .toList()
+        );
         return requests.stream()
-                .map(request -> DocumentRequestResponse.from(
-                        request,
-                        assignees.get(request.getAssignedTo())
-                ))
+                .map(request -> response(request, assignees, submissions, submitters))
                 .toList();
     }
 
@@ -188,7 +210,68 @@ public class WorkspaceService {
                         request.dueDate()
                 )
         );
-        return DocumentRequestResponse.from(documentRequest, assignee);
+        return DocumentRequestResponse.from(documentRequest, assignee, null, null);
+    }
+
+    @Transactional
+    public DocumentRequestResponse uploadSubmission(
+            UUID userId,
+            UUID workspaceId,
+            UUID requestId,
+            MultipartFile file
+    ) {
+        WorkspaceMembership actor = requireMembership(userId, workspaceId);
+        DocumentRequest documentRequest = requestRepository
+                .findByIdAndWorkspaceId(requestId, workspaceId)
+                .orElseThrow(WorkspaceNotFoundException::new);
+        requireSubmissionAccess(userId, actor, documentRequest);
+        if (documentRequest.getStatus() == DocumentRequestStatus.APPROVED) {
+            throw new InvalidWorkspaceException(
+                    "Reopen the approved request before uploading a replacement."
+            );
+        }
+
+        FileResponse uploaded = fileService.upload(userId, file);
+        DocumentRequest saved;
+        try {
+            documentRequest.attachSubmission(uploaded.id());
+            saved = requestRepository.saveAndFlush(documentRequest);
+        } catch (RuntimeException exception) {
+            compensateSubmission(userId, uploaded.id(), exception);
+            throw exception;
+        }
+        StoredFile submission = fileRepository.findById(uploaded.id()).orElseThrow();
+        UserAccount submittedBy = userRepository.findById(userId).orElseThrow();
+        UserAccount assignee = saved.getAssignedTo() == null
+                ? null
+                : userRepository.findById(saved.getAssignedTo()).orElse(null);
+        return DocumentRequestResponse.from(
+                saved,
+                assignee,
+                submission,
+                submittedBy
+        );
+    }
+
+    @Transactional
+    public DownloadUrlResponse createSubmissionDownloadUrl(
+            UUID userId,
+            UUID workspaceId,
+            UUID requestId
+    ) {
+        requireMembership(userId, workspaceId);
+        DocumentRequest documentRequest = requestRepository
+                .findByIdAndWorkspaceId(requestId, workspaceId)
+                .orElseThrow(WorkspaceNotFoundException::new);
+        if (documentRequest.getSubmittedFileId() == null) {
+            throw new InvalidWorkspaceException(
+                    "No file has been submitted for this request."
+            );
+        }
+        return fileService.createAuthorizedDownloadUrl(
+                userId,
+                documentRequest.getSubmittedFileId()
+        );
     }
 
     @Transactional
@@ -212,6 +295,11 @@ public class WorkspaceService {
                             "Only submitted requests can be approved."
                     );
                 }
+                if (documentRequest.getSubmittedFileId() == null) {
+                    throw new InvalidWorkspaceException(
+                            "A submitted file is required before approval."
+                    );
+                }
                 documentRequest.markApproved();
             }
             case PENDING -> {
@@ -223,9 +311,17 @@ public class WorkspaceService {
         UserAccount assignee = documentRequest.getAssignedTo() == null
                 ? null
                 : userRepository.findById(documentRequest.getAssignedTo()).orElse(null);
+        StoredFile submission = documentRequest.getSubmittedFileId() == null
+                ? null
+                : fileRepository.findById(documentRequest.getSubmittedFileId()).orElse(null);
+        UserAccount submittedBy = submission == null
+                ? null
+                : userRepository.findById(submission.getOwnerId()).orElse(null);
         return DocumentRequestResponse.from(
                 requestRepository.save(documentRequest),
-                assignee
+                assignee,
+                submission,
+                submittedBy
         );
     }
 
@@ -239,14 +335,27 @@ public class WorkspaceService {
                     "An approved request must be reopened before it can be submitted again."
             );
         }
-        if (actor.getRole() == WorkspaceRole.CLIENT
-                && request.getAssignedTo() != null
-                && !request.getAssignedTo().equals(userId)) {
+        requireSubmissionAccess(userId, actor, request);
+        if (request.getSubmittedFileId() == null) {
+            throw new InvalidWorkspaceException(
+                    "Upload a file before marking the request as submitted."
+            );
+        }
+        request.markSubmitted();
+    }
+
+    private void requireSubmissionAccess(
+            UUID userId,
+            WorkspaceMembership actor,
+            DocumentRequest request
+    ) {
+        if (request.getAssignedTo() != null
+                && !request.getAssignedTo().equals(userId)
+                && actor.getRole() == WorkspaceRole.CLIENT) {
             throw new WorkspaceAccessException(
                     "Clients can submit only document requests assigned to them."
             );
         }
-        request.markSubmitted();
     }
 
     private UserAccount resolveAssignee(UUID workspaceId, String assigneeEmail) {
@@ -316,10 +425,43 @@ public class WorkspaceService {
                 .collect(Collectors.toMap(UserAccount::getId, Function.identity()));
     }
 
+    private Map<UUID, StoredFile> filesById(List<UUID> ids) {
+        return fileRepository.findAllById(ids)
+                .stream()
+                .collect(Collectors.toMap(StoredFile::getId, Function.identity()));
+    }
+
+    private DocumentRequestResponse response(
+            DocumentRequest request,
+            Map<UUID, UserAccount> assignees,
+            Map<UUID, StoredFile> submissions,
+            Map<UUID, UserAccount> submitters
+    ) {
+        StoredFile submission = submissions.get(request.getSubmittedFileId());
+        return DocumentRequestResponse.from(
+                request,
+                assignees.get(request.getAssignedTo()),
+                submission,
+                submission == null ? null : submitters.get(submission.getOwnerId())
+        );
+    }
+
     private String normalizeDescription(String description) {
         if (description == null || description.isBlank()) {
             return null;
         }
         return description.trim();
+    }
+
+    private void compensateSubmission(
+            UUID ownerId,
+            UUID fileId,
+            RuntimeException originalException
+    ) {
+        try {
+            fileService.discardUpload(ownerId, fileId);
+        } catch (RuntimeException compensationException) {
+            originalException.addSuppressed(compensationException);
+        }
     }
 }

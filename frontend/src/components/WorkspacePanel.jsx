@@ -14,6 +14,7 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
     const [memberRole, setMemberRole] = useState("CLIENT");
     const [requestForm, setRequestForm] = useState(emptyRequest());
     const [busy, setBusy] = useState(false);
+    const [uploadingRequestId, setUploadingRequestId] = useState(null);
 
     const selected = useMemo(
         () => workspaces.find(workspace => workspace.id === selectedId) || null,
@@ -182,6 +183,50 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
         }
     }
 
+    async function uploadSubmission(request, file) {
+        if (!file) return;
+        const validationError = validateSubmission(file);
+        if (validationError) {
+            notify("File not accepted", validationError, true);
+            return;
+        }
+
+        setBusy(true);
+        setUploadingRequestId(request.id);
+        try {
+            const body = new FormData();
+            body.append("file", file);
+            await apiFetch(
+                token,
+                `/api/workspaces/${selected.id}/requests/${request.id}/submission`,
+                {method: "POST", body}
+            );
+            await Promise.all([
+                loadWorkspaceDetails(selected.id),
+                loadWorkspaces(selected.id)
+            ]);
+            notify("Document submitted", `${file.name} is ready for review.`);
+        } catch (error) {
+            if (!handleError(error)) notify("Submission failed", error.message, true);
+        } finally {
+            setUploadingRequestId(null);
+            setBusy(false);
+        }
+    }
+
+    async function downloadSubmission(request) {
+        try {
+            const response = await apiFetch(
+                token,
+                `/api/workspaces/${selected.id}/requests/${request.id}/submission/download-url`
+            );
+            notify("Download started", request.submittedFileName);
+            window.location.assign(response.downloadUrl);
+        } catch (error) {
+            if (!handleError(error)) notify("Download failed", error.message, true);
+        }
+    }
+
     return (
         <section id="workspaces" className="content-section workspace-panel">
             <div className="section-heading workspace-panel-heading">
@@ -212,7 +257,7 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                     <span><Icon name="users"/></span>
                     <div>
                         <strong>Create your first client workspace</strong>
-                        <p>Separate each client’s requests and control who can access them.</p>
+                        <p>Separate each client's requests and control who can access them.</p>
                     </div>
                 </div>
             ) : (
@@ -228,7 +273,7 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                                 onClick={() => setSelectedId(workspace.id)}
                             >
                                 <span className="workspace-monogram">{initials(workspace.name)}</span>
-                                <span><strong>{workspace.name}</strong><small>{workspace.memberCount} members · {workspace.pendingRequestCount} pending</small></span>
+                                <span><strong>{workspace.name}</strong><small>{workspace.memberCount} members / {workspace.pendingRequestCount} pending</small></span>
                                 <em>{workspace.role}</em>
                             </button>
                         ))}
@@ -314,13 +359,49 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                                                         <span className={`request-status ${request.status.toLowerCase()}`}>{request.status}</span>
                                                     </div>
                                                     {request.description && <p>{request.description}</p>}
+                                                    {request.submittedFileId && (
+                                                        <div className="submission-file">
+                                                            <span className="file-badge">{fileExtension(request.submittedFileName)}</span>
+                                                            <div>
+                                                                <strong>{request.submittedFileName}</strong>
+                                                                <small>
+                                                                    {formatBytes(request.submittedFileSizeBytes)}
+                                                                    {request.submittedByName ? ` / Submitted by ${request.submittedByName}` : ""}
+                                                                </small>
+                                                            </div>
+                                                            <button className="table-action" type="button" aria-label={`Download ${request.submittedFileName}`} onClick={() => downloadSubmission(request)}>
+                                                                <Icon name="download"/>
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                     <div className="request-meta">
                                                         <span>{request.dueDate ? `Due ${formatDate(request.dueDate)}` : "No due date"}</span>
-                                                        {requestAction(request, selected.role, user.id) && (
-                                                            <button className="secondary-button compact" type="button" disabled={busy} onClick={() => changeStatus(request, requestAction(request, selected.role, user.id).status)}>
-                                                                {requestAction(request, selected.role, user.id).label}
-                                                            </button>
-                                                        )}
+                                                        <div className="request-actions">
+                                                            {canUploadSubmission(request, selected.role, user.id) && (
+                                                                <label className={`secondary-button compact submission-button${busy ? " disabled" : ""}`}>
+                                                                    <Icon name="upload"/>
+                                                                    {uploadingRequestId === request.id
+                                                                        ? "Uploading..."
+                                                                        : request.submittedFileId ? "Replace file" : "Upload file"}
+                                                                    <input
+                                                                        type="file"
+                                                                        hidden
+                                                                        disabled={busy}
+                                                                        accept=".pdf,.png,.jpg,.jpeg,.txt,application/pdf,image/png,image/jpeg,text/plain"
+                                                                        onChange={event => {
+                                                                            const file = event.target.files?.[0];
+                                                                            event.target.value = "";
+                                                                            uploadSubmission(request, file);
+                                                                        }}
+                                                                    />
+                                                                </label>
+                                                            )}
+                                                            {requestAction(request, selected.role, user.id) && (
+                                                                <button className="secondary-button compact" type="button" disabled={busy} onClick={() => changeStatus(request, requestAction(request, selected.role, user.id).status)}>
+                                                                    {requestAction(request, selected.role, user.id).label}
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </article>
                                             ))}
@@ -338,10 +419,9 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
 
 function requestAction(request, role, userId) {
     const manager = role === "OWNER" || role === "STAFF";
-    if (request.status === "PENDING") {
-        if (manager || !request.assignedTo || request.assignedTo === userId) {
-            return {status: "SUBMITTED", label: "Mark submitted"};
-        }
+    if (request.status === "PENDING" && request.submittedFileId
+            && (manager || !request.assignedTo || request.assignedTo === userId)) {
+        return {status: "SUBMITTED", label: "Resubmit existing"};
     }
     if (request.status === "SUBMITTED" && manager) {
         return {status: "APPROVED", label: "Approve"};
@@ -349,6 +429,20 @@ function requestAction(request, role, userId) {
     if (request.status === "APPROVED" && manager) {
         return {status: "PENDING", label: "Reopen"};
     }
+    return null;
+}
+
+function canUploadSubmission(request, role, userId) {
+    if (request.status === "APPROVED") return false;
+    if (role === "OWNER" || role === "STAFF") return true;
+    return !request.assignedTo || request.assignedTo === userId;
+}
+
+function validateSubmission(file) {
+    const allowed = new Set(["application/pdf", "image/jpeg", "image/png", "text/plain"]);
+    if (!allowed.has(file.type)) return "Choose a PDF, PNG, JPEG, or text file.";
+    if (file.size === 0) return "The selected file is empty.";
+    if (file.size > 10 * 1024 * 1024) return "The selected file is larger than 10 MB.";
     return null;
 }
 
@@ -366,4 +460,14 @@ function today() {
 
 function formatDate(value) {
     return new Intl.DateTimeFormat(undefined, {month: "short", day: "numeric", year: "numeric"}).format(new Date(`${value}T00:00:00`));
+}
+
+function formatBytes(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileExtension(filename) {
+    return (filename.includes(".") ? filename.split(".").pop() : "FILE").slice(0, 4).toUpperCase();
 }

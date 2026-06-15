@@ -1,6 +1,9 @@
 package com.cloudvault.workspace;
 
 import com.cloudvault.auth.RegisterRequest;
+import com.cloudvault.file.StoredFileRepository;
+import com.cloudvault.storage.ObjectStorage;
+import com.cloudvault.storage.PresignedStorageUrl;
 import com.cloudvault.user.UserAccountRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,14 +14,22 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockMultipartFile;
 
+import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -45,6 +56,12 @@ class WorkspaceIntegrationTest {
 
     @Autowired
     private UserAccountRepository userRepository;
+
+    @Autowired
+    private StoredFileRepository fileRepository;
+
+    @MockitoBean
+    private ObjectStorage objectStorage;
 
     @BeforeEach
     void cleanDatabase() {
@@ -116,18 +133,61 @@ class WorkspaceIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("Signed engagement letter"));
 
-        mockMvc.perform(patch(
-                                "/api/workspaces/{workspaceId}/requests/{requestId}",
+        MockMultipartFile submission = new MockMultipartFile(
+                "file",
+                "signed-engagement.pdf",
+                "application/pdf",
+                "signed agreement".getBytes()
+        );
+        mockMvc.perform(multipart(
+                                "/api/workspaces/{workspaceId}/requests/{requestId}/submission",
                                 workspaceId,
                                 requestId
                         )
-                        .header("Authorization", bearer(clientToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"status":"SUBMITTED"}
-                                """))
+                        .file(submission)
+                        .header("Authorization", bearer(clientToken)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("SUBMITTED"));
+                .andExpect(jsonPath("$.status").value("SUBMITTED"))
+                .andExpect(jsonPath("$.submittedFileName")
+                        .value("signed-engagement.pdf"))
+                .andExpect(jsonPath("$.submittedByName").value("Client"));
+
+        String objectKey = fileRepository.findAll().getFirst().getObjectKey();
+        when(objectStorage.createDownloadUrl(
+                eq(objectKey),
+                eq("signed-engagement.pdf"),
+                any()
+        )).thenReturn(new PresignedStorageUrl(
+                "https://example.test/request-submission",
+                "GET",
+                Map.of(),
+                Instant.now().plusSeconds(60)
+        ));
+
+        mockMvc.perform(get(
+                                "/api/workspaces/{workspaceId}/requests/{requestId}/submission/download-url",
+                                workspaceId,
+                                requestId
+                        )
+                        .header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.downloadUrl")
+                        .value("https://example.test/request-submission"));
+
+        mockMvc.perform(get(
+                                "/api/workspaces/{workspaceId}/requests/{requestId}/submission/download-url",
+                                workspaceId,
+                                requestId
+                        )
+                        .header("Authorization", bearer(outsiderToken)))
+                .andExpect(status().isNotFound());
+
+        UUID submittedFileId = fileRepository.findAll().getFirst().getId();
+        mockMvc.perform(delete("/api/files/{id}", submittedFileId)
+                        .header("Authorization", bearer(clientToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("This file is attached to a document request and cannot be deleted."));
 
         mockMvc.perform(patch(
                                 "/api/workspaces/{workspaceId}/requests/{requestId}",
@@ -168,6 +228,9 @@ class WorkspaceIntegrationTest {
         assertThat(workspaceRepository.findById(workspaceId)).isEmpty();
         assertThat(membershipRepository.findAll()).isEmpty();
         assertThat(requestRepository.findAll()).isEmpty();
+        assertThat(fileRepository.findAll())
+                .extracting(file -> file.getOriginalName())
+                .containsExactly("signed-engagement.pdf");
     }
 
     private String register(String name, String email) throws Exception {

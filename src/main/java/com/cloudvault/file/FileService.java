@@ -204,6 +204,16 @@ public class FileService {
     @Transactional
     public DownloadUrlResponse createDownloadUrl(UUID ownerId, UUID id) {
         StoredFile file = findFile(ownerId, id);
+        return createDownloadUrl(ownerId, file);
+    }
+
+    public DownloadUrlResponse createAuthorizedDownloadUrl(UUID actorId, UUID id) {
+        StoredFile file = repository.findById(id)
+                .orElseThrow(() -> new FileNotFoundException(id));
+        return createDownloadUrl(actorId, file);
+    }
+
+    private DownloadUrlResponse createDownloadUrl(UUID actorId, StoredFile file) {
         ensureAvailable(file);
         PresignedStorageUrl url = objectStorage.createDownloadUrl(
                 file.getObjectKey(),
@@ -211,7 +221,7 @@ public class FileService {
                 presignedUrlExpiration
         );
         auditService.record(
-                ownerId,
+                actorId,
                 file.getId(),
                 file.getOriginalName(),
                 AuditAction.DOWNLOAD_LINK_CREATED
@@ -221,6 +231,11 @@ public class FileService {
 
     public void delete(UUID ownerId, UUID id) {
         StoredFile file = findFile(ownerId, id);
+        if (repository.isAttachedToDocumentRequest(id)) {
+            throw new InvalidFileException(
+                    "This file is attached to a document request and cannot be deleted."
+            );
+        }
         objectStorage.delete(file.getObjectKey());
         repository.delete(file);
         auditService.record(
@@ -229,6 +244,12 @@ public class FileService {
                 file.getOriginalName(),
                 AuditAction.FILE_DELETED
         );
+    }
+
+    public void discardUpload(UUID ownerId, UUID id) {
+        StoredFile file = findFile(ownerId, id);
+        objectStorage.delete(file.getObjectKey());
+        repository.delete(file);
     }
 
     private StoredFile findFile(UUID ownerId, UUID id) {

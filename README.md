@@ -26,8 +26,10 @@ expiring share links, audit history, and a responsive React dashboard.
 - Add registered users as workspace staff or clients with enforced access rules.
 - Assign document requests with instructions, assignees, due dates, and
   `PENDING`, `SUBMITTED`, or `APPROVED` status tracking.
-- Allow clients to submit their assigned requests while owners and staff review,
-  approve, or reopen them.
+- Allow clients to upload files directly against assigned requests while owners
+  and staff download, review, approve, or reopen each submission.
+- Keep request submissions in the uploader's private vault and prevent deletion
+  while a file remains attached to an active request.
 - List files with pagination, server-side filename search, and safe sorting.
 - Create revocable share links that expire after one hour, one day, or seven
   days while keeping the S3 bucket private.
@@ -202,6 +204,8 @@ Useful URLs:
 | `GET` | `/api/workspaces/{id}/requests` | List document requests |
 | `POST` | `/api/workspaces/{id}/requests` | Create and assign a document request |
 | `PATCH` | `/api/workspaces/{id}/requests/{requestId}` | Submit, approve, or reopen a request |
+| `POST` | `/api/workspaces/{id}/requests/{requestId}/submission` | Upload or replace a requested document |
+| `GET` | `/api/workspaces/{id}/requests/{requestId}/submission/download-url` | Download a submitted document |
 | `GET` | `/s/{token}` | Resolve a public share token to a short-lived S3 URL |
 
 Example upload:
@@ -238,6 +242,8 @@ Open `http://localhost:8080/` after starting the application. The dashboard:
 - Creates client workspaces and displays the signed-in user's role in each one.
 - Manages registered members, document request assignees, due dates, and review
   status without exposing another workspace's data.
+- Uploads requested documents from the request card and shows the submitted
+  filename, size, uploader, and secure download action to workspace members.
 - Shows only files owned by the authenticated account.
 - Uploads through the authenticated API into private S3 for consistent browser
   behavior without requiring bucket CORS configuration.
@@ -292,8 +298,8 @@ the project production-ready.
 
 ## Roadmap
 
-1. Attach uploaded files directly to document requests and workspace folders.
-2. Add email invitations and request deadline notifications.
+1. Add email invitations and request deadline notifications.
+2. Add workspace folders and document categories.
 3. Add LocalStack and Testcontainers integration tests.
 4. Add malware scanning and content-signature detection.
 5. Deploy the containerized application and database with infrastructure as code.
