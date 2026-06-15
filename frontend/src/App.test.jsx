@@ -25,14 +25,25 @@ describe("CloudVault React application", () => {
             email: "sarthak@example.com",
             role: "USER"
         }));
-        vi.stubGlobal("fetch", vi.fn()
-            .mockResolvedValueOnce(jsonResponse({content: [], totalPages: 0, totalElements: 0}))
-            .mockResolvedValueOnce(jsonResponse({content: [], totalPages: 0, totalElements: 0})));
+        vi.stubGlobal("fetch", vi.fn(async url => {
+            if (String(url).startsWith("/api/files")) {
+                return jsonResponse({content: [], totalPages: 0, totalElements: 0});
+            }
+            if (String(url).startsWith("/api/activity")) {
+                return jsonResponse({content: [], totalPages: 0, totalElements: 0});
+            }
+            if (String(url) === "/api/workspaces") {
+                return jsonResponse([]);
+            }
+            throw new Error(`Unexpected request: ${url}`);
+        }));
 
         render(<App/>);
 
         expect(await screen.findByRole("heading", {name: "My files"})).toBeInTheDocument();
+        expect(await screen.findByRole("heading", {name: "Client workspaces"})).toBeInTheDocument();
         expect(screen.getByText("Sarthak Yadav")).toBeInTheDocument();
+        expect(screen.getByText("Create your first client workspace")).toBeInTheDocument();
         expect(screen.getByText("Your vault is ready")).toBeInTheDocument();
     });
 });

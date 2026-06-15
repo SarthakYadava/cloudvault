@@ -46,7 +46,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
     font: inherit;
 }
 
@@ -1047,6 +1048,382 @@ select:focus {
     text-align: center;
 }
 
+/* Client workspaces */
+
+.workspace-panel {
+    margin-top: 0;
+    padding: 1.1rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: var(--shadow-sm);
+}
+
+.workspace-panel-heading {
+    align-items: center;
+}
+
+.workspace-panel-heading .secondary-button svg {
+    width: 0.9rem;
+    height: 0.9rem;
+}
+
+.inline-workspace-form {
+    display: flex;
+    align-items: end;
+    gap: 0.65rem;
+    margin-bottom: 0.9rem;
+    padding: 0.85rem;
+    border: 1px solid #dec8d4;
+    border-radius: var(--radius-md);
+    background: var(--burgundy-soft);
+}
+
+.inline-workspace-form label {
+    display: grid;
+    flex: 1;
+    gap: 0.35rem;
+}
+
+.inline-workspace-form label span,
+.stacked-workspace-form > strong {
+    font-size: 0.68rem;
+    font-weight: 750;
+}
+
+.inline-workspace-form input,
+.stacked-workspace-form input,
+.stacked-workspace-form select,
+.request-form input,
+.request-form select,
+.request-form textarea {
+    width: 100%;
+    min-height: 2.45rem;
+    padding: 0.6rem 0.72rem;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    outline: none;
+    color: var(--ink);
+    background: #fff;
+    font-size: 0.72rem;
+}
+
+.inline-workspace-form input:focus,
+.stacked-workspace-form input:focus,
+.stacked-workspace-form select:focus,
+.request-form input:focus,
+.request-form select:focus,
+.request-form textarea:focus {
+    border-color: var(--burgundy);
+    box-shadow: 0 0 0 3px rgba(92, 6, 50, 0.1);
+}
+
+.workspace-empty {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1.2rem;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-md);
+    background: #fff;
+}
+
+.workspace-empty > span {
+    display: grid;
+    width: 2.8rem;
+    height: 2.8rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--burgundy);
+    background: var(--burgundy-soft);
+}
+
+.workspace-empty strong,
+.workspace-empty p {
+    display: block;
+}
+
+.workspace-empty strong {
+    font-size: 0.8rem;
+}
+
+.workspace-empty p {
+    margin: 0.22rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.69rem;
+}
+
+.workspace-tabs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 0.65rem;
+}
+
+.workspace-tabs button {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-md);
+    text-align: left;
+    background: #fff;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.workspace-tabs button:hover,
+.workspace-tabs button.active {
+    border-color: #caa7ba;
+    box-shadow: 0 7px 24px rgba(92, 6, 50, 0.08);
+}
+
+.workspace-tabs button.active {
+    background: var(--burgundy-soft);
+}
+
+.workspace-monogram,
+.member-avatar {
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--burgundy);
+    background: #f0dfe8;
+    font-weight: 800;
+}
+
+.workspace-monogram {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 0.63rem;
+}
+
+.workspace-tabs strong,
+.workspace-tabs small {
+    display: block;
+}
+
+.workspace-tabs strong {
+    overflow: hidden;
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.workspace-tabs small {
+    margin-top: 0.16rem;
+    color: var(--ink-soft);
+    font-size: 0.61rem;
+}
+
+.workspace-tabs em,
+.member-row em {
+    color: var(--burgundy);
+    font-size: 0.56rem;
+    font-style: normal;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+}
+
+.workspace-detail {
+    margin-top: 0.8rem;
+    padding: 1rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-md);
+    background: #fff;
+}
+
+.workspace-summary,
+.subsection-heading,
+.request-card-top,
+.request-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+}
+
+.workspace-summary h3 {
+    margin: 0;
+    font-size: 1.08rem;
+    letter-spacing: -0.025em;
+}
+
+.role-pill,
+.request-status {
+    padding: 0.28rem 0.52rem;
+    border-radius: 999px;
+    font-size: 0.55rem;
+    font-weight: 850;
+    letter-spacing: 0.04em;
+}
+
+.role-pill {
+    color: var(--burgundy);
+    background: var(--burgundy-soft);
+}
+
+.workspace-columns {
+    display: grid;
+    grid-template-columns: minmax(14rem, 0.8fr) minmax(20rem, 1.2fr);
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.workspace-column {
+    min-width: 0;
+    padding: 0.85rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-md);
+    background: var(--surface-soft);
+}
+
+.subsection-heading strong,
+.subsection-heading span {
+    display: block;
+}
+
+.subsection-heading strong {
+    font-size: 0.78rem;
+}
+
+.subsection-heading span {
+    margin-top: 0.14rem;
+    color: var(--ink-soft);
+    font-size: 0.63rem;
+}
+
+.member-list {
+    margin-top: 0.55rem;
+}
+
+.member-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.58rem;
+    padding: 0.55rem 0;
+}
+
+.member-row + .member-row {
+    border-top: 1px solid var(--line-soft);
+}
+
+.member-avatar {
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 0.55rem;
+}
+
+.member-row strong,
+.member-row small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.member-row strong {
+    font-size: 0.69rem;
+}
+
+.member-row small {
+    margin-top: 0.12rem;
+    color: var(--ink-soft);
+    font-size: 0.58rem;
+}
+
+.stacked-workspace-form,
+.request-form {
+    display: grid;
+    gap: 0.48rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line-soft);
+}
+
+.stacked-workspace-form > div,
+.request-form > div {
+    display: flex;
+    align-items: center;
+    gap: 0.48rem;
+}
+
+.request-form textarea {
+    min-height: 4rem;
+    resize: vertical;
+}
+
+.request-list {
+    display: grid;
+    gap: 0.55rem;
+    margin-top: 0.7rem;
+}
+
+.request-card {
+    padding: 0.72rem;
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-sm);
+    background: #fff;
+}
+
+.request-card-top strong,
+.request-card-top span {
+    display: block;
+}
+
+.request-card-top strong {
+    font-size: 0.72rem;
+}
+
+.request-card-top div > span,
+.request-card p,
+.request-meta > span {
+    color: var(--ink-soft);
+    font-size: 0.61rem;
+}
+
+.request-card-top div > span {
+    margin-top: 0.12rem;
+}
+
+.request-card p {
+    margin: 0.55rem 0;
+    line-height: 1.45;
+}
+
+.request-status.pending {
+    color: #8a6500;
+    background: #fff4c6;
+}
+
+.request-status.submitted {
+    color: #075c91;
+    background: #e9f5ff;
+}
+
+.request-status.approved {
+    color: var(--success);
+    background: var(--success-soft);
+}
+
+.request-meta {
+    margin-top: 0.58rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--line-soft);
+}
+
+.workspace-request-empty {
+    margin: 0.7rem 0 0;
+    padding: 1rem;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    color: var(--ink-soft);
+    font-size: 0.68rem;
+    text-align: center;
+}
+
 /* Share sheet */
 
 .modal-backdrop {
@@ -1339,6 +1716,10 @@ select:focus {
     .file-table td:nth-child(4) {
         display: none;
     }
+
+    .workspace-columns {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1376,7 +1757,19 @@ select:focus {
     }
 
     .share-form,
-    .copy-row {
+    .copy-row,
+    .inline-workspace-form,
+    .stacked-workspace-form > div,
+    .request-form > div {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .workspace-panel {
+        padding: 0.8rem;
+    }
+
+    .workspace-panel-heading {
         align-items: stretch;
         flex-direction: column;
     }

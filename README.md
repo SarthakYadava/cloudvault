@@ -5,8 +5,8 @@ and Amazon S3. It is designed as a secure client document exchange portal for
 small professional-service teams.
 
 The application includes account registration, JWT login, per-user file
-ownership, presigned browser transfers, expiring share links, audit history,
-and a responsive React dashboard.
+ownership, client workspaces, role-based membership, document requests,
+expiring share links, audit history, and a responsive React dashboard.
 
 ## Current Features
 
@@ -22,6 +22,12 @@ and a responsive React dashboard.
 - Isolate every file by owner in both PostgreSQL queries and S3 object keys.
 - Store file bytes in a private Amazon S3 bucket.
 - Store searchable file metadata in PostgreSQL.
+- Create separate workspaces for professional-service clients.
+- Add registered users as workspace staff or clients with enforced access rules.
+- Assign document requests with instructions, assignees, due dates, and
+  `PENDING`, `SUBMITTED`, or `APPROVED` status tracking.
+- Allow clients to submit their assigned requests while owners and staff review,
+  approve, or reopen them.
 - List files with pagination, server-side filename search, and safe sorting.
 - Create revocable share links that expire after one hour, one day, or seven
   days while keeping the S3 bucket private.
@@ -47,6 +53,7 @@ flowchart LR
     Auth --> API["Spring Boot REST API"]
     API --> Validation["File validation"]
     API --> Database["PostgreSQL metadata"]
+    API --> Workspaces["Workspace roles and document requests"]
     API --> Audit["Audit and share-link records"]
     API --> URLs["Short-lived presigned URLs"]
     URLs --> S3["Private Amazon S3 bucket"]
@@ -187,6 +194,13 @@ Useful URLs:
 | `GET` | `/api/files/{id}/shares` | List a file's share-link history |
 | `DELETE` | `/api/shares/{id}` | Revoke a share link |
 | `GET` | `/api/activity` | List owner-scoped audit events |
+| `POST` | `/api/workspaces` | Create a client workspace |
+| `GET` | `/api/workspaces` | List workspaces available to the user |
+| `GET` | `/api/workspaces/{id}/members` | List workspace members |
+| `POST` | `/api/workspaces/{id}/members` | Add a registered staff or client member |
+| `GET` | `/api/workspaces/{id}/requests` | List document requests |
+| `POST` | `/api/workspaces/{id}/requests` | Create and assign a document request |
+| `PATCH` | `/api/workspaces/{id}/requests/{requestId}` | Submit, approve, or reopen a request |
 | `GET` | `/s/{token}` | Resolve a public share token to a short-lived S3 URL |
 
 Example upload:
@@ -220,6 +234,9 @@ Open `http://localhost:8080/` after starting the application. The dashboard:
 - Is built with React components and bundled with Vite into the Spring Boot JAR.
 - Stores the JWT only in browser session storage, so closing the browser clears
   the local session.
+- Creates client workspaces and displays the signed-in user's role in each one.
+- Manages registered members, document request assignees, due dates, and review
+  status without exposing another workspace's data.
 - Shows only files owned by the authenticated account.
 - Uploads through the authenticated API into private S3 for consistent browser
   behavior without requiring bucket CORS configuration.
@@ -255,6 +272,9 @@ files or committing access keys.
 - API requests are stateless and protected by signed, expiring JWTs.
 - Passwords are stored as BCrypt hashes.
 - File lookups always include the authenticated owner ID.
+- Workspace lookups require membership and return no data to outsiders.
+- Workspace owners control membership; owners and staff manage requests; clients
+  can submit only requests available or assigned to them.
 - Presigned links expire after ten minutes by default.
 - Share links are revocable, expire automatically, and store only a token hash.
 - Public share requests receive a fresh short-lived S3 redirect and never see
@@ -271,7 +291,8 @@ the project production-ready.
 
 ## Roadmap
 
-1. Add LocalStack and Testcontainers integration tests.
-2. Add refresh tokens, logout/revocation, and account management.
-3. Add malware scanning and content-signature detection.
-4. Deploy the containerized application and database with infrastructure as code.
+1. Attach uploaded files directly to document requests and workspace folders.
+2. Add email invitations and request deadline notifications.
+3. Add LocalStack and Testcontainers integration tests.
+4. Add malware scanning and content-signature detection.
+5. Deploy the containerized application and database with infrastructure as code.

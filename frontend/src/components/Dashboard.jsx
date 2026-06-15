@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState} from "react";
 import {apiFetch, uploadWithProgress} from "../api";
 import {Brand, Icon} from "../icons";
 import ShareDialog from "./ShareDialog";
+import WorkspacePanel from "./WorkspacePanel";
 
 const PAGE_SIZE = 20;
 const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "text/plain"]);
@@ -164,6 +165,9 @@ export default function Dashboard({session, onLogout, notify}) {
             <aside className={`sidebar${menuOpen ? " open" : ""}`}>
                 <Brand/>
                 <nav className="side-nav" aria-label="Workspace navigation">
+                    <button type="button" onClick={() => scrollTo("workspaces")}>
+                        <Icon name="users"/> Workspaces
+                    </button>
                     <button className="active" type="button" onClick={() => scrollTo("documents")}>
                         <Icon name="home"/> My files
                     </button>
@@ -205,6 +209,13 @@ export default function Dashboard({session, onLogout, notify}) {
                 </header>
 
                 <div className="workspace-content">
+                    <WorkspacePanel
+                        token={token}
+                        user={user}
+                        notify={notify}
+                        handleError={handleError}
+                    />
+
                     <input
                         ref={fileInput}
                         type="file"

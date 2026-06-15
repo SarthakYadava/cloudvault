@@ -15,6 +15,8 @@ export function Icon({name, className}) {
         search: <><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></>,
         share: <><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></>,
         download: <><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></>,
+        users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></>,
+        plus: <path d="M12 5v14M5 12h14"/>,
         close: <path d="M6 6l12 12M18 6L6 18"/>
     };
 

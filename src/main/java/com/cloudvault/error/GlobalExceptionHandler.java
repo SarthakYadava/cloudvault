@@ -27,6 +27,30 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(InvalidWorkspaceException.class)
+    ResponseEntity<ApiError> handleInvalidWorkspace(
+            InvalidWorkspaceException exception,
+            HttpServletRequest request
+    ) {
+        return error(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(WorkspaceAccessException.class)
+    ResponseEntity<ApiError> handleWorkspaceAccess(
+            WorkspaceAccessException exception,
+            HttpServletRequest request
+    ) {
+        return error(HttpStatus.FORBIDDEN, exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(WorkspaceNotFoundException.class)
+    ResponseEntity<ApiError> handleWorkspaceNotFound(
+            WorkspaceNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return error(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+    }
+
     @ExceptionHandler(FileNotFoundException.class)
     ResponseEntity<ApiError> handleNotFound(
             FileNotFoundException exception,
