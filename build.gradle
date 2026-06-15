@@ -98,5 +98,13 @@ tasks.named('processResources') {
         from(layout.buildDirectory.dir('generated-resources/frontend')) {
             into 'static'
         }
+    } else {
+        doFirst {
+            if (!file('src/main/resources/static/index.html').exists()) {
+                throw new GradleException(
+                        'skipFrontend requires a prebuilt src/main/resources/static/index.html'
+                )
+            }
+        }
     }
 }

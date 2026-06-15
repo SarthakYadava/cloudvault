@@ -94,41 +94,14 @@ export default function Dashboard({session, onLogout, notify}) {
         }
 
         setUpload({filename: file.name, percent: 0, status: "Preparing secure upload..."});
-        let reservationId = null;
         try {
-            const reservation = await apiFetch(token, "/api/files/upload-requests", {
-                method: "POST",
-                body: JSON.stringify({
-                    filename: file.name,
-                    contentType: file.type,
-                    sizeBytes: file.size
-                })
-            });
-            reservationId = reservation.file.id;
-            await uploadWithProgress({
-                url: reservation.uploadUrl,
-                method: reservation.method,
-                headers: reservation.requiredHeaders,
-                file,
-                onProgress: ratio => updateUpload(Math.min(90, Math.round(ratio * 90)), "Uploading directly to private S3...")
-            });
-            updateUpload(96, "Verifying upload with S3...");
-            await apiFetch(token, `/api/files/${reservationId}/complete`, {method: "POST"});
+            updateUpload(8, "Preparing encrypted cloud storage...");
+            await uploadThroughApi(file);
             updateUpload(100, "Upload complete");
             notify("Upload complete", `${file.name} is now available.`);
-        } catch (directError) {
-            if (reservationId) {
-                await apiFetch(token, `/api/files/${reservationId}`, {method: "DELETE"}).catch(() => {});
-            }
-            try {
-                updateUpload(12, "Using secure server upload...");
-                await fallbackUpload(file);
-                updateUpload(100, "Upload complete");
-                notify("Upload complete", `${file.name} is now available.`);
-            } catch (fallbackError) {
-                if (!handleError(fallbackError)) {
-                    notify("Upload failed", fallbackError.message || directError.message, true);
-                }
+        } catch (error) {
+            if (!handleError(error)) {
+                notify("Upload failed", error.message, true);
             }
         } finally {
             setPage(0);
@@ -137,13 +110,16 @@ export default function Dashboard({session, onLogout, notify}) {
         }
     }
 
-    function fallbackUpload(file) {
+    function uploadThroughApi(file) {
         return uploadWithProgress({
             url: "/api/files",
             method: "POST",
             headers: {Authorization: `Bearer ${token}`},
-            file: createMultipartBody(file),
-            onProgress: ratio => updateUpload(Math.round(ratio * 92), "Uploading through CloudVault...")
+            body: createMultipartBody(file),
+            onProgress: ratio => updateUpload(
+                Math.max(8, Math.round(ratio * 95)),
+                "Uploading securely to private S3..."
+            )
         });
     }
 

@@ -201,7 +201,7 @@ public class FileService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public DownloadUrlResponse createDownloadUrl(UUID ownerId, UUID id) {
         StoredFile file = findFile(ownerId, id);
         ensureAvailable(file);

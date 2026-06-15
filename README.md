@@ -14,9 +14,8 @@ and a responsive React dashboard.
 - Use a responsive React dashboard with registration, login, server-side search and
   sorting, upload progress, downloads, sharing, and deletion controls.
 - Drag files onto the page or select them from the system file picker.
-- Transfer files directly between clients and private S3 using expiring URLs.
-- Fall back to authenticated server uploads when direct browser-to-S3 CORS is
-  not configured.
+- Upload through the authenticated Spring API into private S3, avoiding public
+  bucket access and browser CORS dependencies.
 - Verify direct uploads with S3 before marking metadata as available.
 - Register users and authenticate with short-lived JWT access tokens.
 - Hash passwords with BCrypt; plaintext passwords are never stored.
@@ -222,8 +221,8 @@ Open `http://localhost:8080/` after starting the application. The dashboard:
 - Stores the JWT only in browser session storage, so closing the browser clears
   the local session.
 - Shows only files owned by the authenticated account.
-- Prefers short-lived direct S3 upload URLs and verifies each upload afterward.
-- Falls back to the multipart API when S3 browser CORS is unavailable.
+- Uploads through the authenticated API into private S3 for consistent browser
+  behavior without requiring bucket CORS configuration.
 - Uses temporary S3 download URLs and never exposes AWS credentials.
 - Creates and revokes expiring links without making the bucket or object public.
 - Shows recent security-relevant activity for the signed-in owner.

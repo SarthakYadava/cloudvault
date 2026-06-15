@@ -25,7 +25,7 @@ export async function apiFetch(token, url, options = {}) {
     return data;
 }
 
-export function uploadWithProgress({url, method, headers, file, onProgress}) {
+export function uploadWithProgress({url, method, headers, body, onProgress}) {
     return new Promise((resolve, reject) => {
         const request = new XMLHttpRequest();
         request.open(method, url);
@@ -45,6 +45,6 @@ export function uploadWithProgress({url, method, headers, file, onProgress}) {
             }
         });
         request.addEventListener("error", () => reject(new Error("The upload connection failed.")));
-        request.send(file);
+        request.send(body);
     });
 }

@@ -183,6 +183,33 @@ class ShareLinkIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(0));
     }
 
+    @Test
+    void downloadUrlCreationIsCommittedToActivityHistory() throws Exception {
+        String token = register("Owner", "owner@example.com");
+        UserAccount owner = userRepository.findByEmail("owner@example.com").orElseThrow();
+        StoredFile file = saveFile(owner, "statement.pdf");
+
+        when(objectStorage.createDownloadUrl(
+                eq(file.getObjectKey()),
+                eq(file.getOriginalName()),
+                any()
+        )).thenReturn(new PresignedStorageUrl(
+                "https://example.test/download",
+                "GET",
+                Map.of(),
+                Instant.now().plusSeconds(60)
+        ));
+
+        mockMvc.perform(get("/api/files/{id}/download-url", file.getId())
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.downloadUrl").value("https://example.test/download"));
+
+        assertThat(auditEventRepository.findAll())
+                .extracting(event -> event.getAction())
+                .containsExactly(AuditAction.DOWNLOAD_LINK_CREATED);
+    }
+
     private String register(String name, String email) throws Exception {
         String request = objectMapper.writeValueAsString(
                 new RegisterRequest(name, email, "StrongPass123")
