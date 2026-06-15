@@ -45,6 +45,7 @@ public class SecurityConfiguration {
                         .permitAll()
                         .requestMatchers(
                                 "/",
+                                "/index.html",
                                 "/assets/**",
                                 "/favicon.svg",
                                 "/error",

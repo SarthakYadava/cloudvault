@@ -30,7 +30,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
@@ -45,5 +44,54 @@ dependencies {
 }
 
 tasks.named('test') {
+    dependsOn 'frontendTest'
     useJUnitPlatform()
+}
+
+def frontendDirectory = file("$projectDir/frontend")
+def npmExecutable = System.getProperty('os.name').toLowerCase().contains('windows')
+        ? 'npm.cmd'
+        : 'npm'
+
+tasks.register('frontendInstall', Exec) {
+    workingDir frontendDirectory
+    commandLine npmExecutable, 'ci'
+    inputs.files(
+            file('frontend/package.json'),
+            file('frontend/package-lock.json')
+    )
+    outputs.dir file('frontend/node_modules')
+}
+
+tasks.register('frontendTest', Exec) {
+    dependsOn 'frontendInstall'
+    workingDir frontendDirectory
+    commandLine npmExecutable, 'run', 'test'
+    inputs.files(
+            file('frontend/package.json'),
+            file('frontend/package-lock.json'),
+            file('frontend/vite.config.js')
+    )
+    inputs.dir file('frontend/src')
+}
+
+tasks.register('frontendBuild', Exec) {
+    dependsOn 'frontendInstall'
+    workingDir frontendDirectory
+    commandLine npmExecutable, 'run', 'build'
+    inputs.files(
+            file('frontend/package.json'),
+            file('frontend/package-lock.json'),
+            file('frontend/vite.config.js'),
+            file('frontend/index.html')
+    )
+    inputs.dir file('frontend/src')
+    outputs.dir layout.buildDirectory.dir('generated-resources/frontend')
+}
+
+tasks.named('processResources') {
+    dependsOn 'frontendBuild'
+    from(layout.buildDirectory.dir('generated-resources/frontend')) {
+        into 'static'
+    }
 }

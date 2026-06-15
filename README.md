@@ -6,12 +6,12 @@ small professional-service teams.
 
 The application includes account registration, JWT login, per-user file
 ownership, presigned browser transfers, expiring share links, audit history,
-and a responsive web dashboard.
+and a responsive React dashboard.
 
 ## Current Features
 
 - Upload PDF, PNG, JPEG, and text files up to 10 MB.
-- Use a responsive dashboard with registration, login, server-side search and
+- Use a responsive React dashboard with registration, login, server-side search and
   sorting, upload progress, downloads, sharing, and deletion controls.
 - Drag files onto the page or select them from the system file picker.
 - Transfer files directly between clients and private S3 using expiring URLs.
@@ -56,6 +56,7 @@ flowchart LR
 ## Technology
 
 - Java 21
+- React 19 and Vite
 - Spring Boot 3.5
 - Spring Web and Bean Validation
 - Spring Security and OAuth2 Resource Server JWT support
@@ -64,7 +65,7 @@ flowchart LR
 - AWS SDK for Java v2
 - OpenAPI/Swagger UI
 - JUnit, Mockito, and H2
-- Gradle, Docker Compose, and GitHub Actions
+- Gradle, npm, Docker Compose, and GitHub Actions
 
 ## Prerequisites
 
@@ -116,6 +117,18 @@ Run the application:
 ```powershell
 .\gradlew.bat bootRun
 ```
+
+Gradle installs, tests, and builds the React frontend before packaging Spring
+Boot. For frontend-only development with hot reload:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Vite runs at `http://localhost:5173` and proxies API requests to Spring Boot on
+port `8080`.
 
 Useful URLs:
 
@@ -171,6 +184,7 @@ does not match the original upload request.
 
 Open `http://localhost:8080/` after starting the application. The dashboard:
 
+- Is built with React components and bundled with Vite into the Spring Boot JAR.
 - Stores the JWT only in browser session storage, so closing the browser clears
   the local session.
 - Shows only files owned by the authenticated account.

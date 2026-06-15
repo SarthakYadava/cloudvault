@@ -9,8 +9,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -24,16 +24,14 @@ class DashboardIntegrationTest {
     void dashboardIsPubliclyAvailable() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("dashboard"))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("CloudVault")));
+                .andExpect(forwardedUrl("/index.html"));
     }
 
     @Test
     void dashboardAssetsArePubliclyAvailable() throws Exception {
-        mockMvc.perform(get("/assets/cloudvault.css"))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(get("/assets/cloudvault.js"))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("CloudVault")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"root\"")));
     }
 }

@@ -1,6 +1,7 @@
 .gradle/
 .gradle-user-home/
 build/
+frontend/node_modules/
 out/
 .idea/
 .vscode/
