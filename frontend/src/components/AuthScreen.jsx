@@ -1,14 +1,22 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {apiFetch} from "../api";
 import {Brand, Icon} from "../icons";
 
-export default function AuthScreen({onAuthenticated}) {
+export default function AuthScreen({onAuthenticated, invitation, invitationError}) {
     const [mode, setMode] = useState("login");
     const [showPassword, setShowPassword] = useState(false);
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState("");
     const [form, setForm] = useState({name: "", email: "", password: ""});
     const registering = mode === "register";
+
+    useEffect(() => {
+        if (!invitation?.email) return;
+        setForm(current => current.email
+            ? current
+            : {...current, email: invitation.email}
+        );
+    }, [invitation]);
 
     function changeMode(nextMode) {
         setMode(nextMode);
@@ -77,6 +85,20 @@ export default function AuthScreen({onAuthenticated}) {
 
             <section className="auth-panel">
                 <div className="auth-card">
+                    {(invitation || invitationError) && (
+                        <div className="invite-auth-banner">
+                            <strong>
+                                {invitationError
+                                    ? "Invitation unavailable"
+                                    : `Invitation to ${invitation.workspaceName}`}
+                            </strong>
+                            <span>
+                                {invitationError
+                                    ? invitationError
+                                    : `Sign in or create an account with ${invitation.email}.`}
+                            </span>
+                        </div>
+                    )}
                     <div className="auth-heading">
                         <p className="eyebrow">CloudVault</p>
                         <h2>{registering ? "Create your workspace" : "Welcome back"}</h2>

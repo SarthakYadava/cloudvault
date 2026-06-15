@@ -33,6 +33,8 @@ public class WorkspaceService {
     private final UserAccountRepository userRepository;
     private final StoredFileRepository fileRepository;
     private final FileService fileService;
+    private final WorkspaceInvitationService invitationService;
+    private final WorkspaceEmailNotifier emailNotifier;
 
     public WorkspaceService(
             WorkspaceRepository workspaceRepository,
@@ -40,7 +42,9 @@ public class WorkspaceService {
             DocumentRequestRepository requestRepository,
             UserAccountRepository userRepository,
             StoredFileRepository fileRepository,
-            FileService fileService
+            FileService fileService,
+            WorkspaceInvitationService invitationService,
+            WorkspaceEmailNotifier emailNotifier
     ) {
         this.workspaceRepository = workspaceRepository;
         this.membershipRepository = membershipRepository;
@@ -48,6 +52,8 @@ public class WorkspaceService {
         this.userRepository = userRepository;
         this.fileRepository = fileRepository;
         this.fileService = fileService;
+        this.invitationService = invitationService;
+        this.emailNotifier = emailNotifier;
     }
 
     @Transactional
@@ -154,6 +160,21 @@ public class WorkspaceService {
         }
     }
 
+    public List<WorkspaceInvitationResponse> listInvitations(
+            UUID userId,
+            UUID workspaceId
+    ) {
+        return invitationService.list(userId, workspaceId);
+    }
+
+    public WorkspaceInvitationResponse createInvitation(
+            UUID userId,
+            UUID workspaceId,
+            CreateWorkspaceInvitationRequest request
+    ) {
+        return invitationService.create(userId, workspaceId, request);
+    }
+
     @Transactional(readOnly = true)
     public List<DocumentRequestResponse> listRequests(
             UUID userId,
@@ -210,6 +231,7 @@ public class WorkspaceService {
                         request.dueDate()
                 )
         );
+        emailNotifier.requestAssigned(documentRequest, assignee);
         return DocumentRequestResponse.from(documentRequest, assignee, null, null);
     }
 
@@ -245,6 +267,7 @@ public class WorkspaceService {
         UserAccount assignee = saved.getAssignedTo() == null
                 ? null
                 : userRepository.findById(saved.getAssignedTo()).orElse(null);
+        emailNotifier.submissionReceived(saved, submittedBy);
         return DocumentRequestResponse.from(
                 saved,
                 assignee,
@@ -287,7 +310,11 @@ public class WorkspaceService {
                 .orElseThrow(WorkspaceNotFoundException::new);
 
         switch (request.status()) {
-            case SUBMITTED -> submit(userId, actor, documentRequest);
+            case SUBMITTED -> {
+                submit(userId, actor, documentRequest);
+                UserAccount submitter = userRepository.findById(userId).orElseThrow();
+                emailNotifier.submissionReceived(documentRequest, submitter);
+            }
             case APPROVED -> {
                 requireManager(actor);
                 if (documentRequest.getStatus() != DocumentRequestStatus.SUBMITTED) {
@@ -301,6 +328,7 @@ public class WorkspaceService {
                     );
                 }
                 documentRequest.markApproved();
+                emailNotifier.requestApproved(documentRequest);
             }
             case PENDING -> {
                 requireManager(actor);

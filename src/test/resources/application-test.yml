@@ -24,3 +24,11 @@ cloudvault:
     jwt-secret: cloudvault-test-secret-key-at-least-32-characters
     issuer: cloudvault-test
     token-expiration: PT1H
+  invitations:
+    expiration: P7D
+  notifications:
+    delivery: log
+    from-address: notifications@cloudvault.test
+    app-base-url: http://localhost:8080
+    deadline-reminder-days: 1
+    deadline-reminder-cron: 0 0 9 * * *

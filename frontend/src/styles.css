@@ -380,6 +380,27 @@ svg {
     box-shadow: var(--shadow-lg);
 }
 
+.invite-auth-banner {
+    display: grid;
+    gap: 0.2rem;
+    margin-bottom: 1.2rem;
+    padding: 0.85rem;
+    border: 1px solid #dec8d4;
+    border-radius: var(--radius-sm);
+    color: var(--burgundy);
+    background: var(--burgundy-soft);
+}
+
+.invite-auth-banner strong {
+    font-size: 0.78rem;
+}
+
+.invite-auth-banner span {
+    color: var(--ink-soft);
+    font-size: 0.7rem;
+    line-height: 1.45;
+}
+
 .auth-heading h2 {
     margin: 0;
     font-size: clamp(1.85rem, 4vw, 2.5rem);
@@ -490,6 +511,98 @@ select:focus {
     box-shadow: var(--shadow-sm);
     font-size: 0.76rem;
     transform: translateX(-50%);
+}
+
+/* Workspace invitation */
+
+.invitation-layout {
+    display: grid;
+    min-height: 100vh;
+    padding: 1.5rem;
+    place-items: center;
+    background:
+        radial-gradient(circle at 50% 10%, rgba(92, 6, 50, 0.12), transparent 32rem),
+        var(--background);
+}
+
+.invitation-card {
+    display: grid;
+    width: min(100%, 34rem);
+    justify-items: center;
+    padding: clamp(2rem, 6vw, 4rem);
+    border: 1px solid var(--line-soft);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--shadow-lg);
+}
+
+.invitation-card .brand {
+    margin-bottom: 2rem;
+}
+
+.invitation-icon {
+    display: grid;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin-bottom: 1rem;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--burgundy);
+    background: var(--burgundy-soft);
+}
+
+.invitation-card h1 {
+    margin: 0;
+    font-size: clamp(2rem, 8vw, 3.4rem);
+    letter-spacing: -0.055em;
+}
+
+.invitation-card > p:not(.eyebrow, .form-message) {
+    max-width: 28rem;
+    margin: 1rem 0;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.invitation-status {
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    color: #8b6700;
+    background: #fff7d6;
+    font-size: 0.62rem;
+    font-weight: 850;
+    letter-spacing: 0.05em;
+}
+
+.invitation-status.accepted {
+    color: var(--success);
+    background: var(--success-soft);
+}
+
+.invitation-status.expired {
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.invitation-actions {
+    display: grid;
+    width: 100%;
+    gap: 0.55rem;
+    margin-top: 1.5rem;
+}
+
+.text-button {
+    padding: 0.65rem;
+    border: 0;
+    color: var(--ink-soft);
+    background: transparent;
+    font-size: 0.74rem;
+}
+
+.text-button:hover {
+    color: var(--burgundy);
 }
 
 /* Dashboard */
@@ -1401,6 +1514,75 @@ select:focus {
     display: flex;
     align-items: center;
     gap: 0.48rem;
+}
+
+.stacked-workspace-form .invite-copy-row {
+    align-items: stretch;
+}
+
+.invite-copy-row input {
+    min-width: 0;
+}
+
+.invitation-list {
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 0.8rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--line-soft);
+}
+
+.invitation-list > strong {
+    font-size: 0.68rem;
+}
+
+.invitation-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0;
+}
+
+.invitation-row + .invitation-row {
+    border-top: 1px solid var(--line-soft);
+}
+
+.invitation-row span > strong,
+.invitation-row small {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.invitation-row span > strong {
+    font-size: 0.66rem;
+}
+
+.invitation-row small {
+    margin-top: 0.12rem;
+    color: var(--ink-soft);
+    font-size: 0.56rem;
+}
+
+.invitation-row em {
+    font-size: 0.54rem;
+    font-style: normal;
+    font-weight: 850;
+    letter-spacing: 0.04em;
+}
+
+.invitation-row em.pending {
+    color: #8b6700;
+}
+
+.invitation-row em.accepted {
+    color: var(--success);
+}
+
+.invitation-row em.expired {
+    color: var(--danger);
 }
 
 .request-form textarea {

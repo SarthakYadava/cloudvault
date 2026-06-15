@@ -43,6 +43,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/invitations/*")
+                        .permitAll()
                         .requestMatchers(
                                 "/",
                                 "/index.html",

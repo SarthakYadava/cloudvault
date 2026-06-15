@@ -81,6 +81,31 @@ public class WorkspaceController {
                 .body(workspaceService.addMember(userId(jwt), workspaceId, request));
     }
 
+    @GetMapping("/{workspaceId}/invitations")
+    @Operation(summary = "List workspace invitations")
+    public List<WorkspaceInvitationResponse> listInvitations(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID workspaceId
+    ) {
+        return workspaceService.listInvitations(userId(jwt), workspaceId);
+    }
+
+    @PostMapping("/{workspaceId}/invitations")
+    @Operation(summary = "Invite a staff member or client")
+    public ResponseEntity<WorkspaceInvitationResponse> createInvitation(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID workspaceId,
+            @Valid @RequestBody CreateWorkspaceInvitationRequest request
+    ) {
+        return ResponseEntity.status(201).body(
+                workspaceService.createInvitation(
+                        userId(jwt),
+                        workspaceId,
+                        request
+                )
+        );
+    }
+
     @GetMapping("/{workspaceId}/requests")
     @Operation(summary = "List workspace document requests")
     public List<DocumentRequestResponse> listRequests(

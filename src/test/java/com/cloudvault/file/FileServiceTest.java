@@ -58,6 +58,14 @@ class FileServiceTest {
                         "cloudvault-test-secret-key-at-least-32-characters",
                         "cloudvault-test",
                         Duration.ofHours(1)
+                ),
+                new CloudVaultProperties.Invitations(Duration.ofDays(7)),
+                new CloudVaultProperties.Notifications(
+                        "log",
+                        "notifications@cloudvault.test",
+                        "http://localhost:8080",
+                        1,
+                        "0 0 9 * * *"
                 )
         );
         fileService = new FileService(repository, objectStorage, auditService, properties);

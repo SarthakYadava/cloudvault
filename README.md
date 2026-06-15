@@ -6,7 +6,8 @@ small professional-service teams.
 
 The application includes account registration, JWT login, per-user file
 ownership, client workspaces, role-based membership, document requests,
-expiring share links, audit history, and a responsive React dashboard.
+secure email invitations, deadline reminders, expiring share links, audit
+history, and a responsive React dashboard.
 
 ## Current Features
 
@@ -23,7 +24,10 @@ expiring share links, audit history, and a responsive React dashboard.
 - Store file bytes in a private Amazon S3 bucket.
 - Store searchable file metadata in PostgreSQL.
 - Create separate workspaces for professional-service clients.
-- Add registered users as workspace staff or clients with enforced access rules.
+- Invite staff or clients through hashed, seven-day acceptance tokens that are
+  bound to the invited email address.
+- Deliver invitation, assignment, submission, approval, and due-soon messages
+  through configurable SMTP, with a safe log-only mode for local development.
 - Assign document requests with instructions, assignees, due dates, and
   `PENDING`, `SUBMITTED`, or `APPROVED` status tracking.
 - Allow clients to upload files directly against assigned requests while owners
@@ -201,6 +205,10 @@ Useful URLs:
 | `DELETE` | `/api/workspaces/{id}` | Permanently delete an owned workspace |
 | `GET` | `/api/workspaces/{id}/members` | List workspace members |
 | `POST` | `/api/workspaces/{id}/members` | Add a registered staff or client member |
+| `GET` | `/api/workspaces/{id}/invitations` | List workspace invitation status |
+| `POST` | `/api/workspaces/{id}/invitations` | Create and deliver a workspace invitation |
+| `GET` | `/api/invitations/{token}` | Preview an invitation without signing in |
+| `POST` | `/api/invitations/{token}/accept` | Accept an invitation as the matching user |
 | `GET` | `/api/workspaces/{id}/requests` | List document requests |
 | `POST` | `/api/workspaces/{id}/requests` | Create and assign a document request |
 | `PATCH` | `/api/workspaces/{id}/requests/{requestId}` | Submit, approve, or reopen a request |
@@ -242,6 +250,8 @@ Open `http://localhost:8080/` after starting the application. The dashboard:
 - Creates client workspaces and displays the signed-in user's role in each one.
 - Manages registered members, document request assignees, due dates, and review
   status without exposing another workspace's data.
+- Creates client and staff invitations, displays pending/accepted/expired
+  status, and supports secure acceptance after sign-in or registration.
 - Uploads requested documents from the request card and shows the submitted
   filename, size, uploader, and secure download action to workspace members.
 - Shows only files owned by the authenticated account.
@@ -261,6 +271,17 @@ Open `http://localhost:8080/` after starting the application. The dashboard:
 | `JWT_SECRET` | Required | Random signing secret of at least 32 characters |
 | `JWT_EXPIRATION` | `PT1H` | Access-token lifetime |
 | `PRESIGNED_URL_EXPIRATION` | `PT10M` | Direct S3 URL lifetime |
+| `INVITATION_EXPIRATION` | `P7D` | Workspace invitation lifetime |
+| `APP_BASE_URL` | `http://localhost:8080` | Base URL used in invitation emails |
+| `EMAIL_DELIVERY` | `log` | Use `log` locally or `smtp` for real email |
+| `EMAIL_FROM` | `notifications@cloudvault.local` | Sender address for SMTP mail |
+| `SMTP_HOST` | `localhost` | SMTP server host |
+| `SMTP_PORT` | `587` | SMTP server port |
+| `SMTP_USERNAME` | Empty | SMTP account username |
+| `SMTP_PASSWORD` | Empty | SMTP account password |
+| `MAIL_HEALTH_ENABLED` | `false` | Enable the SMTP health probe after SMTP is configured |
+| `DEADLINE_REMINDER_DAYS` | `1` | Days before a due date to send one reminder |
+| `DEADLINE_REMINDER_CRON` | `0 0 9 * * *` | Daily reminder schedule |
 | `DB_URL` | `jdbc:postgresql://localhost:5432/cloudvault` | JDBC URL |
 | `DB_USERNAME` | `cloudvault` | Database user |
 | `DB_PASSWORD` | `cloudvault` | Database password |
@@ -282,6 +303,8 @@ files or committing access keys.
 - Workspace lookups require membership and return no data to outsiders.
 - Workspace owners control membership; owners and staff manage requests; clients
   can submit only requests available or assigned to them.
+- Invitation tokens are random, stored only as SHA-256 hashes, expire
+  automatically, and can only be accepted by the invited email address.
 - Presigned links expire after ten minutes by default.
 - Share links are revocable, expire automatically, and store only a token hash.
 - Public share requests receive a fresh short-lived S3 redirect and never see
@@ -298,8 +321,7 @@ the project production-ready.
 
 ## Roadmap
 
-1. Add email invitations and request deadline notifications.
-2. Add workspace folders and document categories.
-3. Add LocalStack and Testcontainers integration tests.
-4. Add malware scanning and content-signature detection.
-5. Deploy the containerized application and database with infrastructure as code.
+1. Add workspace folders and document categories.
+2. Add LocalStack and Testcontainers integration tests.
+3. Add malware scanning and content-signature detection.
+4. Deploy the containerized application and database with infrastructure as code.

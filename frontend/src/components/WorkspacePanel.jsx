@@ -6,12 +6,14 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
     const [workspaces, setWorkspaces] = useState([]);
     const [selectedId, setSelectedId] = useState(null);
     const [members, setMembers] = useState([]);
+    const [invitations, setInvitations] = useState([]);
     const [requests, setRequests] = useState([]);
     const [message, setMessage] = useState("");
     const [creatingWorkspace, setCreatingWorkspace] = useState(false);
     const [workspaceName, setWorkspaceName] = useState("");
-    const [memberEmail, setMemberEmail] = useState("");
-    const [memberRole, setMemberRole] = useState("CLIENT");
+    const [inviteEmail, setInviteEmail] = useState("");
+    const [inviteRole, setInviteRole] = useState("CLIENT");
+    const [latestInviteUrl, setLatestInviteUrl] = useState("");
     const [requestForm, setRequestForm] = useState(emptyRequest());
     const [busy, setBusy] = useState(false);
     const [uploadingRequestId, setUploadingRequestId] = useState(null);
@@ -37,20 +39,25 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
         }
     }, [handleError, token]);
 
-    const loadWorkspaceDetails = useCallback(async workspaceId => {
+    const loadWorkspaceDetails = useCallback(async (workspaceId, role) => {
         if (!workspaceId) {
             setMembers([]);
+            setInvitations([]);
             setRequests([]);
             return;
         }
         setMessage("");
         try {
-            const [memberResponse, requestResponse] = await Promise.all([
+            const [memberResponse, requestResponse, invitationResponse] = await Promise.all([
                 apiFetch(token, `/api/workspaces/${workspaceId}/members`),
-                apiFetch(token, `/api/workspaces/${workspaceId}/requests`)
+                apiFetch(token, `/api/workspaces/${workspaceId}/requests`),
+                role === "OWNER"
+                    ? apiFetch(token, `/api/workspaces/${workspaceId}/invitations`)
+                    : Promise.resolve([])
             ]);
             setMembers(memberResponse);
             setRequests(requestResponse);
+            setInvitations(invitationResponse);
         } catch (error) {
             if (!handleError(error)) setMessage(error.message);
         }
@@ -61,8 +68,9 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
     }, [loadWorkspaces]);
 
     useEffect(() => {
-        loadWorkspaceDetails(selectedId);
-    }, [loadWorkspaceDetails, selectedId]);
+        setLatestInviteUrl("");
+        loadWorkspaceDetails(selectedId, selected?.role);
+    }, [loadWorkspaceDetails, selected?.role, selectedId]);
 
     async function createWorkspace(event) {
         event.preventDefault();
@@ -84,26 +92,33 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
         }
     }
 
-    async function addMember(event) {
+    async function createInvitation(event) {
         event.preventDefault();
-        if (!selected || !memberEmail.trim()) return;
+        if (!selected || !inviteEmail.trim()) return;
         setBusy(true);
         try {
-            await apiFetch(token, `/api/workspaces/${selected.id}/members`, {
+            const invitation = await apiFetch(token, `/api/workspaces/${selected.id}/invitations`, {
                 method: "POST",
                 body: JSON.stringify({
-                    email: memberEmail.trim(),
-                    role: memberRole
+                    email: inviteEmail.trim(),
+                    role: inviteRole
                 })
             });
-            setMemberEmail("");
+            const invitedEmail = inviteEmail.trim();
+            setInviteEmail("");
+            setLatestInviteUrl(invitation.acceptanceUrl || "");
             await Promise.all([
-                loadWorkspaceDetails(selected.id),
+                loadWorkspaceDetails(selected.id, selected.role),
                 loadWorkspaces(selected.id)
             ]);
-            notify("Member added", `${memberEmail.trim()} can now access ${selected.name}.`);
+            notify(
+                "Invitation created",
+                invitation.deliveryMode === "SMTP"
+                    ? `An email was sent to ${invitedEmail}.`
+                    : `The invitation for ${invitedEmail} is ready to copy.`
+            );
         } catch (error) {
-            if (!handleError(error)) notify("Member not added", error.message, true);
+            if (!handleError(error)) notify("Invitation not created", error.message, true);
         } finally {
             setBusy(false);
         }
@@ -149,7 +164,7 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
             });
             setRequestForm(emptyRequest());
             await Promise.all([
-                loadWorkspaceDetails(selected.id),
+                loadWorkspaceDetails(selected.id, selected.role),
                 loadWorkspaces(selected.id)
             ]);
             notify("Document requested", `${requestForm.title.trim()} was added to ${selected.name}.`);
@@ -172,7 +187,7 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                 }
             );
             await Promise.all([
-                loadWorkspaceDetails(selected.id),
+                loadWorkspaceDetails(selected.id, selected.role),
                 loadWorkspaces(selected.id)
             ]);
             notify("Request updated", `${request.title} is now ${status.toLowerCase()}.`);
@@ -202,7 +217,7 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                 {method: "POST", body}
             );
             await Promise.all([
-                loadWorkspaceDetails(selected.id),
+                loadWorkspaceDetails(selected.id, selected.role),
                 loadWorkspaces(selected.id)
             ]);
             notify("Document submitted", `${file.name} is ready for review.`);
@@ -312,17 +327,40 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                                     </div>
 
                                     {isOwner && (
-                                        <form className="stacked-workspace-form" onSubmit={addMember}>
-                                            <strong>Add a registered user</strong>
-                                            <input type="email" required value={memberEmail} placeholder="client@company.com" onChange={event => setMemberEmail(event.target.value)}/>
+                                        <form className="stacked-workspace-form" onSubmit={createInvitation}>
+                                            <strong>Invite a client or staff member</strong>
+                                            <input type="email" required value={inviteEmail} placeholder="client@company.com" onChange={event => setInviteEmail(event.target.value)}/>
                                             <div>
-                                                <select value={memberRole} onChange={event => setMemberRole(event.target.value)}>
+                                                <select value={inviteRole} onChange={event => setInviteRole(event.target.value)}>
                                                     <option value="CLIENT">Client</option>
                                                     <option value="STAFF">Staff</option>
                                                 </select>
-                                                <button className="secondary-button compact" type="submit" disabled={busy}>Add member</button>
+                                                <button className="secondary-button compact" type="submit" disabled={busy}>Send invite</button>
                                             </div>
+                                            {latestInviteUrl && (
+                                                <div className="invite-copy-row">
+                                                    <input readOnly value={latestInviteUrl} aria-label="Latest invitation link"/>
+                                                    <button className="secondary-button compact" type="button" onClick={() => {
+                                                        navigator.clipboard.writeText(latestInviteUrl);
+                                                        notify("Link copied", "The invitation link is ready to share.");
+                                                    }}>Copy link</button>
+                                                </div>
+                                            )}
                                         </form>
+                                    )}
+                                    {isOwner && invitations.length > 0 && (
+                                        <div className="invitation-list">
+                                            <strong>Invitation history</strong>
+                                            {invitations.map(invitation => (
+                                                <div className="invitation-row" key={invitation.id}>
+                                                    <span>
+                                                        <strong>{invitation.email}</strong>
+                                                        <small>{invitation.role} / Expires {formatDateTime(invitation.expiresAt)}</small>
+                                                    </span>
+                                                    <em className={invitation.status.toLowerCase()}>{invitation.status}</em>
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
 
@@ -460,6 +498,14 @@ function today() {
 
 function formatDate(value) {
     return new Intl.DateTimeFormat(undefined, {month: "short", day: "numeric", year: "numeric"}).format(new Date(`${value}T00:00:00`));
+}
+
+function formatDateTime(value) {
+    return new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    }).format(new Date(value));
 }
 
 function formatBytes(bytes) {

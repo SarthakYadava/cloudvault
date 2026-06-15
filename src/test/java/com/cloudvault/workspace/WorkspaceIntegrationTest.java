@@ -55,6 +55,9 @@ class WorkspaceIntegrationTest {
     private WorkspaceRepository workspaceRepository;
 
     @Autowired
+    private WorkspaceInvitationRepository invitationRepository;
+
+    @Autowired
     private UserAccountRepository userRepository;
 
     @Autowired
@@ -65,10 +68,81 @@ class WorkspaceIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        invitationRepository.deleteAll();
         requestRepository.deleteAll();
         membershipRepository.deleteAll();
         workspaceRepository.deleteAll();
         userRepository.deleteAll();
+    }
+
+    @Test
+    void ownerInvitesMatchingUserWhoAcceptsThroughSecureToken() throws Exception {
+        String ownerToken = register("Owner", "owner@example.com");
+        String clientToken = register("Client", "client@example.com");
+        String outsiderToken = register("Outsider", "outsider@example.com");
+
+        String workspaceJson = mockMvc.perform(post("/api/workspaces")
+                        .header("Authorization", bearer(ownerToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Client Exchange"}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        UUID workspaceId = UUID.fromString(
+                objectMapper.readTree(workspaceJson).path("id").asText()
+        );
+
+        String invitationJson = mockMvc.perform(post(
+                                "/api/workspaces/{id}/invitations",
+                                workspaceId
+                        )
+                        .header("Authorization", bearer(ownerToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"client@example.com","role":"CLIENT"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.deliveryMode").value("LOG"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode invitation = objectMapper.readTree(invitationJson);
+        String acceptanceUrl = invitation.path("acceptanceUrl").asText();
+        String token = acceptanceUrl.substring(acceptanceUrl.indexOf("?invite=") + 8);
+
+        mockMvc.perform(get("/api/invitations/{token}", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.workspaceName").value("Client Exchange"))
+                .andExpect(jsonPath("$.email").value("client@example.com"))
+                .andExpect(jsonPath("$.acceptanceUrl").doesNotExist());
+
+        mockMvc.perform(post("/api/invitations/{token}/accept", token)
+                        .header("Authorization", bearer(outsiderToken)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value(
+                        "Sign in with the email address that received this invitation."
+                ));
+
+        mockMvc.perform(post("/api/invitations/{token}/accept", token)
+                        .header("Authorization", bearer(clientToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+
+        mockMvc.perform(get("/api/workspaces")
+                        .header("Authorization", bearer(clientToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Client Exchange"))
+                .andExpect(jsonPath("$[0].role").value("CLIENT"));
+
+        mockMvc.perform(post("/api/invitations/{token}/accept", token)
+                        .header("Authorization", bearer(clientToken)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value("This invitation has already been accepted."));
     }
 
     @Test

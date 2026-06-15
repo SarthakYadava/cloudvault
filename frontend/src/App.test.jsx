@@ -5,6 +5,7 @@ import App from "./App";
 afterEach(() => {
     cleanup();
     sessionStorage.clear();
+    window.history.replaceState({}, "", "/");
     vi.restoreAllMocks();
 });
 
@@ -83,6 +84,9 @@ describe("CloudVault React application", () => {
                 }]);
             }
             if (String(url) === "/api/workspaces/workspace-1/requests") {
+                return jsonResponse([]);
+            }
+            if (String(url) === "/api/workspaces/workspace-1/invitations") {
                 return jsonResponse([]);
             }
             if (String(url) === "/api/workspaces/workspace-1"
@@ -182,6 +186,57 @@ describe("CloudVault React application", () => {
         ));
         expect(await screen.findByText("signed.pdf")).toBeInTheDocument();
         expect(screen.getByText("Submitted by Client User", {exact: false})).toBeInTheDocument();
+    });
+
+    it("accepts a workspace invitation for the signed-in recipient", async () => {
+        window.history.replaceState({}, "", "/?invite=secure-token");
+        sessionStorage.setItem("cloudvault.token", "test-token");
+        sessionStorage.setItem("cloudvault.user", JSON.stringify({
+            id: "client-id",
+            name: "Client User",
+            email: "client@example.com",
+            role: "USER"
+        }));
+        const fetchMock = vi.fn(async (url, options = {}) => {
+            if (String(url) === "/api/invitations/secure-token") {
+                return jsonResponse({
+                    workspaceName: "Acme Legal",
+                    email: "client@example.com",
+                    role: "CLIENT",
+                    status: "PENDING"
+                });
+            }
+            if (String(url) === "/api/invitations/secure-token/accept"
+                    && options.method === "POST") {
+                return jsonResponse({
+                    workspaceName: "Acme Legal",
+                    status: "ACCEPTED"
+                });
+            }
+            if (String(url).startsWith("/api/files")) {
+                return jsonResponse({content: [], totalPages: 0, totalElements: 0});
+            }
+            if (String(url).startsWith("/api/activity")) {
+                return jsonResponse({content: [], totalPages: 0, totalElements: 0});
+            }
+            if (String(url) === "/api/workspaces") {
+                return jsonResponse([]);
+            }
+            throw new Error(`Unexpected request: ${url}`);
+        });
+        vi.stubGlobal("fetch", fetchMock);
+
+        render(<App/>);
+
+        expect(await screen.findByRole("heading", {name: "Acme Legal"})).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", {name: "Accept invitation"}));
+
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+            "/api/invitations/secure-token/accept",
+            expect.objectContaining({method: "POST"})
+        ));
+        expect(await screen.findByRole("heading", {name: "My files"})).toBeInTheDocument();
+        expect(window.location.search).toBe("");
     });
 });
 

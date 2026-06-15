@@ -1,6 +1,17 @@
 spring:
   application:
     name: cloudvault
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:true}
+          starttls:
+            enable: ${SMTP_STARTTLS:true}
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/cloudvault}
     username: ${DB_USERNAME:cloudvault}
@@ -30,8 +41,19 @@ cloudvault:
     jwt-secret: ${JWT_SECRET}
     issuer: cloudvault
     token-expiration: ${JWT_EXPIRATION:PT1H}
+  invitations:
+    expiration: ${INVITATION_EXPIRATION:P7D}
+  notifications:
+    delivery: ${EMAIL_DELIVERY:log}
+    from-address: ${EMAIL_FROM:notifications@cloudvault.local}
+    app-base-url: ${APP_BASE_URL:http://localhost:8080}
+    deadline-reminder-days: ${DEADLINE_REMINDER_DAYS:1}
+    deadline-reminder-cron: ${DEADLINE_REMINDER_CRON:0 0 9 * * *}
 
 management:
+  health:
+    mail:
+      enabled: ${MAIL_HEALTH_ENABLED:false}
   endpoints:
     web:
       exposure:

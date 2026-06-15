@@ -52,6 +52,9 @@ public class DocumentRequest {
     @Column(name = "submitted_file_id")
     private UUID submittedFileId;
 
+    @Column(name = "deadline_reminder_sent_at")
+    private Instant deadlineReminderSentAt;
+
     protected DocumentRequest() {
     }
 
@@ -120,6 +123,10 @@ public class DocumentRequest {
         approvedAt = null;
     }
 
+    public void markDeadlineReminderSent() {
+        deadlineReminderSentAt = Instant.now();
+    }
+
     public UUID getId() {
         return id;
     }
@@ -166,5 +173,9 @@ public class DocumentRequest {
 
     public UUID getSubmittedFileId() {
         return submittedFileId;
+    }
+
+    public Instant getDeadlineReminderSentAt() {
+        return deadlineReminderSentAt;
     }
 }

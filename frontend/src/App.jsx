@@ -1,12 +1,26 @@
-import {useCallback, useState} from "react";
+import {useCallback, useEffect, useState} from "react";
+import {apiFetch} from "./api";
 import AuthScreen from "./components/AuthScreen";
 import Dashboard from "./components/Dashboard";
+import InvitationAcceptance from "./components/InvitationAcceptance";
 import {clearSession, readSession, writeSession} from "./session";
 
 export default function App() {
     const [session, setSession] = useState(readSession);
+    const [inviteToken, setInviteToken] = useState(
+        () => new URLSearchParams(window.location.search).get("invite")
+    );
+    const [invitation, setInvitation] = useState(null);
+    const [invitationError, setInvitationError] = useState("");
     const [toasts, setToasts] = useState([]);
     const [authNotice, setAuthNotice] = useState("");
+
+    useEffect(() => {
+        if (!inviteToken) return;
+        apiFetch(null, `/api/invitations/${inviteToken}`)
+            .then(setInvitation)
+            .catch(error => setInvitationError(error.message));
+    }, [inviteToken]);
 
     const notify = useCallback((title, message, error = false) => {
         const id = crypto.randomUUID();
@@ -34,13 +48,39 @@ export default function App() {
         if (!message) notify("Signed out", "Your browser session has been cleared.");
     }, [notify]);
 
+    function finishInvitation(workspaceName) {
+        dismissInvitation();
+        notify("Invitation accepted", `You now have access to ${workspaceName}.`);
+    }
+
+    function dismissInvitation() {
+        window.history.replaceState({}, "", window.location.pathname);
+        setInviteToken(null);
+        setInvitation(null);
+        setInvitationError("");
+    }
+
     return (
         <>
             <div className="page-noise" aria-hidden="true"/>
             {session
-                ? <Dashboard session={session} onLogout={logout} notify={notify}/>
+                ? inviteToken
+                    ? <InvitationAcceptance
+                        token={session.token}
+                        inviteToken={inviteToken}
+                        invitation={invitation}
+                        invitationError={invitationError}
+                        onAccepted={finishInvitation}
+                        onContinue={dismissInvitation}
+                        onLogout={logout}
+                    />
+                    : <Dashboard session={session} onLogout={logout} notify={notify}/>
                 : <>
-                    <AuthScreen onAuthenticated={authenticate}/>
+                    <AuthScreen
+                        onAuthenticated={authenticate}
+                        invitation={invitation}
+                        invitationError={invitationError}
+                    />
                     {authNotice && <div className="session-notice" role="alert">{authNotice}</div>}
                 </>}
             <div className="toast-region" aria-live="polite" aria-atomic="true">

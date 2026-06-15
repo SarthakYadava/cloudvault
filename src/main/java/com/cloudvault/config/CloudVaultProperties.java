@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -17,7 +18,9 @@ import java.time.Duration;
 public record CloudVaultProperties(
         @Valid Aws aws,
         @Valid Files files,
-        @Valid Auth auth
+        @Valid Auth auth,
+        @Valid Invitations invitations,
+        @Valid Notifications notifications
 ) {
 
     public record Aws(
@@ -37,6 +40,20 @@ public record CloudVaultProperties(
             @NotBlank @Size(min = 32) String jwtSecret,
             @NotBlank String issuer,
             @NotNull Duration tokenExpiration
+    ) {
+    }
+
+    public record Invitations(
+            @NotNull Duration expiration
+    ) {
+    }
+
+    public record Notifications(
+            @NotBlank String delivery,
+            @NotBlank String fromAddress,
+            @NotBlank String appBaseUrl,
+            @PositiveOrZero int deadlineReminderDays,
+            @NotBlank String deadlineReminderCron
     ) {
     }
 }
