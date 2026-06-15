@@ -47,6 +47,7 @@ public class SecurityConfiguration {
                                 "/",
                                 "/index.html",
                                 "/assets/**",
+                                "/brand/**",
                                 "/favicon.svg",
                                 "/error",
                                 "/s/**",

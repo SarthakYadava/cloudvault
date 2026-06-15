@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -44,6 +45,16 @@ public class WorkspaceController {
     @Operation(summary = "List workspaces available to the current user")
     public List<WorkspaceResponse> list(@AuthenticationPrincipal Jwt jwt) {
         return workspaceService.list(userId(jwt));
+    }
+
+    @DeleteMapping("/{workspaceId}")
+    @Operation(summary = "Delete a workspace and its request history")
+    public ResponseEntity<Void> delete(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID workspaceId
+    ) {
+        workspaceService.delete(userId(jwt), workspaceId);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{workspaceId}/members")

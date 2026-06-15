@@ -108,6 +108,30 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
         }
     }
 
+    async function deleteWorkspace() {
+        if (!selected) return;
+        const confirmed = window.confirm(
+            `Delete "${selected.name}"? Its members and document requests will be permanently removed. Personal files will not be deleted.`
+        );
+        if (!confirmed) return;
+
+        setBusy(true);
+        try {
+            await apiFetch(token, `/api/workspaces/${selected.id}`, {
+                method: "DELETE"
+            });
+            setMembers([]);
+            setRequests([]);
+            setSelectedId(null);
+            await loadWorkspaces();
+            notify("Workspace deleted", `${selected.name} was permanently removed.`);
+        } catch (error) {
+            if (!handleError(error)) notify("Workspace not deleted", error.message, true);
+        } finally {
+            setBusy(false);
+        }
+    }
+
     async function createRequest(event) {
         event.preventDefault();
         if (!selected || !requestForm.title.trim()) return;
@@ -217,7 +241,14 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                                     <p className="eyebrow">Selected workspace</p>
                                     <h3>{selected.name}</h3>
                                 </div>
-                                <span className={`role-pill ${selected.role.toLowerCase()}`}>{selected.role}</span>
+                                <div className="workspace-summary-actions">
+                                    <span className={`role-pill ${selected.role.toLowerCase()}`}>{selected.role}</span>
+                                    {isOwner && (
+                                        <button className="danger-button compact" type="button" disabled={busy} onClick={deleteWorkspace}>
+                                            <Icon name="trash"/> Delete workspace
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="workspace-columns">

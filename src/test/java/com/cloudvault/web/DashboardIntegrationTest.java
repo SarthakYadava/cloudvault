@@ -33,5 +33,9 @@ class DashboardIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("CloudVault")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"root\"")));
+
+        mockMvc.perform(get("/brand/cloudvault-logo.png"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("image/png"));
     }
 }

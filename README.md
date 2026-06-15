@@ -196,6 +196,7 @@ Useful URLs:
 | `GET` | `/api/activity` | List owner-scoped audit events |
 | `POST` | `/api/workspaces` | Create a client workspace |
 | `GET` | `/api/workspaces` | List workspaces available to the user |
+| `DELETE` | `/api/workspaces/{id}` | Permanently delete an owned workspace |
 | `GET` | `/api/workspaces/{id}/members` | List workspace members |
 | `POST` | `/api/workspaces/{id}/members` | Add a registered staff or client member |
 | `GET` | `/api/workspaces/{id}/requests` | List document requests |

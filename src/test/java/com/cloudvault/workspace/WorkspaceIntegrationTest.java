@@ -17,6 +17,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -155,6 +156,18 @@ class WorkspaceIntegrationTest {
 
         assertThat(requestRepository.findById(requestId).orElseThrow().getStatus())
                 .isEqualTo(DocumentRequestStatus.APPROVED);
+
+        mockMvc.perform(delete("/api/workspaces/{id}", workspaceId)
+                        .header("Authorization", bearer(clientToken)))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete("/api/workspaces/{id}", workspaceId)
+                        .header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isNoContent());
+
+        assertThat(workspaceRepository.findById(workspaceId)).isEmpty();
+        assertThat(membershipRepository.findAll()).isEmpty();
+        assertThat(requestRepository.findAll()).isEmpty();
     }
 
     private String register(String name, String email) throws Exception {

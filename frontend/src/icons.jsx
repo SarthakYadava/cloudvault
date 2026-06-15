@@ -26,8 +26,12 @@ export function Icon({name, className}) {
 export function Brand() {
     return (
         <span className="brand">
-            <span className="brand-mark"><Icon name="lock"/></span>
-            <span>CloudVault</span>
+            <span className="brand-mark">
+                <img src="/brand/cloudvault-logo.png" alt=""/>
+            </span>
+            <span className="brand-wordmark">
+                <span>Cloud</span><strong>Vault</strong>
+            </span>
         </span>
     );
 }

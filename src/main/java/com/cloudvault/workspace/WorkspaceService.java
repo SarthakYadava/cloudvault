@@ -74,6 +74,15 @@ public class WorkspaceService {
                 .toList();
     }
 
+    @Transactional
+    public void delete(UUID userId, UUID workspaceId) {
+        WorkspaceMembership membership = requireMembership(userId, workspaceId);
+        requireOwner(membership);
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+                .orElseThrow(WorkspaceNotFoundException::new);
+        workspaceRepository.delete(workspace);
+    }
+
     @Transactional(readOnly = true)
     public List<WorkspaceMemberResponse> listMembers(UUID userId, UUID workspaceId) {
         requireMembership(userId, workspaceId);
