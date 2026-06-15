@@ -34,3 +34,20 @@ jobs:
 
       - name: Test
         run: ./gradlew clean test
+
+      - name: Validate Docker Compose
+        env:
+          AWS_CREDENTIALS_DIR: /tmp/.aws
+          JWT_SECRET: ci-only-jwt-secret-at-least-32-characters
+          DB_PASSWORD: ci-only-database-password
+        run: docker compose config --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build production container
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: cloudvault:ci

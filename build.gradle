@@ -52,6 +52,9 @@ def frontendDirectory = file("$projectDir/frontend")
 def npmExecutable = System.getProperty('os.name').toLowerCase().contains('windows')
         ? 'npm.cmd'
         : 'npm'
+def skipFrontend = providers.gradleProperty('skipFrontend')
+        .map { it.toBoolean() }
+        .getOrElse(false)
 
 tasks.register('frontendInstall', Exec) {
     workingDir frontendDirectory
@@ -90,8 +93,10 @@ tasks.register('frontendBuild', Exec) {
 }
 
 tasks.named('processResources') {
-    dependsOn 'frontendBuild'
-    from(layout.buildDirectory.dir('generated-resources/frontend')) {
-        into 'static'
+    if (!skipFrontend) {
+        dependsOn 'frontendBuild'
+        from(layout.buildDirectory.dir('generated-resources/frontend')) {
+            into 'static'
+        }
     }
 }

@@ -1,0 +1,12 @@
+.git
+.github
+.gradle
+.gradle-user-home
+.idea
+.vscode
+build
+frontend/node_modules
+repo-review
+*.iml
+*.log
+.env

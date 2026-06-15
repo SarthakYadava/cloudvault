@@ -37,7 +37,8 @@ and a responsive React dashboard.
 - Apply Flyway database migrations at startup.
 - Return consistent JSON errors without exposing AWS credentials or internals.
 - Publish Swagger UI and Spring Boot health endpoints.
-- Run automated service and application-context tests in GitHub Actions.
+- Run React, service, application-context, Compose validation, and container
+  build checks in GitHub Actions.
 
 ## Architecture
 
@@ -83,7 +84,40 @@ aws configure --profile file-java90
 
 ## Local Setup
 
-Start PostgreSQL:
+Create your local environment file:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Set a strong `JWT_SECRET`, database password, and the absolute path to your
+local `.aws` directory in `.env`. The file is excluded from Git.
+
+### Full Docker Stack
+
+When Docker Desktop is installed, build and start the React frontend, Spring
+Boot API, and PostgreSQL database together:
+
+```powershell
+docker compose up --build
+```
+
+The application waits for PostgreSQL to become healthy, applies Flyway
+migrations, and exposes the dashboard at `http://localhost:8080`.
+
+Stop the stack with:
+
+```powershell
+docker compose down
+```
+
+Database data remains in the `cloudvault-postgres` volume. Use
+`docker compose down -v` only when you intentionally want to delete local
+database data.
+
+### Native Development
+
+Start only PostgreSQL:
 
 ```powershell
 docker compose up -d postgres
@@ -208,6 +242,12 @@ Open `http://localhost:8080/` after starting the application. The dashboard:
 | `DB_USERNAME` | `cloudvault` | Database user |
 | `DB_PASSWORD` | `cloudvault` | Database password |
 
+For the Docker Compose stack, `DB_PASSWORD`, `JWT_SECRET`, and
+`AWS_CREDENTIALS_DIR` are required in `.env`. The local AWS directory is
+mounted read-only into the application container. In a hosted environment,
+prefer a platform IAM role or workload identity instead of mounting credential
+files or committing access keys.
+
 ## Security Decisions
 
 - S3 Block Public Access stays enabled.
@@ -235,4 +275,4 @@ the project production-ready.
 1. Add LocalStack and Testcontainers integration tests.
 2. Add refresh tokens, logout/revocation, and account management.
 3. Add malware scanning and content-signature detection.
-4. Deploy the application and database with infrastructure as code.
+4. Deploy the containerized application and database with infrastructure as code.
