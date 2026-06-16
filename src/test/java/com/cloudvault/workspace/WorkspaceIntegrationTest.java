@@ -189,11 +189,13 @@ class WorkspaceIntegrationTest {
                                   "title":"Signed engagement letter",
                                   "description":"Upload the signed PDF.",
                                   "assigneeEmail":"client@example.com",
-                                  "dueDate":"2030-01-15"
+                                  "dueDate":"2030-01-15",
+                                  "category":"CONTRACTS"
                                 }
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.category").value("CONTRACTS"))
                 .andExpect(jsonPath("$.assigneeEmail").value("client@example.com"))
                 .andReturn()
                 .getResponse()
@@ -206,6 +208,14 @@ class WorkspaceIntegrationTest {
                         .header("Authorization", bearer(clientToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("Signed engagement letter"));
+
+        mockMvc.perform(get("/api/workspaces")
+                        .header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].pendingRequestCount").value(1))
+                .andExpect(jsonPath("$[0].submittedRequestCount").value(0))
+                .andExpect(jsonPath("$[0].approvedRequestCount").value(0))
+                .andExpect(jsonPath("$[0].overdueRequestCount").value(0));
 
         MockMultipartFile submission = new MockMultipartFile(
                 "file",
@@ -248,6 +258,12 @@ class WorkspaceIntegrationTest {
                 .andExpect(jsonPath("$.downloadUrl")
                         .value("https://example.test/request-submission"));
 
+        mockMvc.perform(get("/api/workspaces")
+                        .header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].pendingRequestCount").value(0))
+                .andExpect(jsonPath("$[0].submittedRequestCount").value(1));
+
         mockMvc.perform(get(
                                 "/api/workspaces/{workspaceId}/requests/{requestId}/submission/download-url",
                                 workspaceId,
@@ -275,6 +291,12 @@ class WorkspaceIntegrationTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APPROVED"));
+
+        mockMvc.perform(get("/api/workspaces")
+                        .header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].submittedRequestCount").value(0))
+                .andExpect(jsonPath("$[0].approvedRequestCount").value(1));
 
         mockMvc.perform(get("/api/workspaces/{id}/requests", workspaceId)
                         .header("Authorization", bearer(outsiderToken)))

@@ -37,6 +37,10 @@ public class DocumentRequest {
     private LocalDate dueDate;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private DocumentCategory category;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private DocumentRequestStatus status;
 
@@ -66,6 +70,7 @@ public class DocumentRequest {
             UUID assignedTo,
             UUID createdBy,
             LocalDate dueDate,
+            DocumentCategory category,
             DocumentRequestStatus status,
             Instant createdAt
     ) {
@@ -76,6 +81,7 @@ public class DocumentRequest {
         this.assignedTo = assignedTo;
         this.createdBy = createdBy;
         this.dueDate = dueDate;
+        this.category = category;
         this.status = status;
         this.createdAt = createdAt;
     }
@@ -86,7 +92,8 @@ public class DocumentRequest {
             String description,
             UUID assignedTo,
             UUID createdBy,
-            LocalDate dueDate
+            LocalDate dueDate,
+            DocumentCategory category
     ) {
         return new DocumentRequest(
                 UUID.randomUUID(),
@@ -96,6 +103,7 @@ public class DocumentRequest {
                 assignedTo,
                 createdBy,
                 dueDate,
+                category,
                 DocumentRequestStatus.PENDING,
                 Instant.now()
         );
@@ -153,6 +161,10 @@ public class DocumentRequest {
 
     public LocalDate getDueDate() {
         return dueDate;
+    }
+
+    public DocumentCategory getCategory() {
+        return category;
     }
 
     public DocumentRequestStatus getStatus() {

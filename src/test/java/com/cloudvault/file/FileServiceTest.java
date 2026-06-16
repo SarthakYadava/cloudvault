@@ -243,4 +243,40 @@ class FileServiceTest {
         verify(objectStorage).delete(file.getObjectKey());
         verify(repository).delete(file);
     }
+
+    @Test
+    void renamesAndOrganizesFileWithoutMovingS3Object() {
+        StoredFile file = StoredFile.createAvailable(
+                ownerId,
+                "scan.pdf",
+                "users/" + ownerId + "/files/" + UUID.randomUUID() + ".pdf",
+                "application/pdf",
+                100
+        );
+        when(repository.findByIdAndOwnerId(file.getId(), ownerId))
+                .thenReturn(Optional.of(file));
+        when(repository.save(file)).thenReturn(file);
+
+        FileResponse response = fileService.updateMetadata(
+                ownerId,
+                file.getId(),
+                new UpdateFileMetadataRequest(
+                        "signed-contract.pdf",
+                        "Contracts",
+                        Set.of("signed", "client")
+                )
+        );
+
+        assertThat(response.originalName()).isEqualTo("signed-contract.pdf");
+        assertThat(response.folder()).isEqualTo("Contracts");
+        assertThat(response.tags()).containsExactlyInAnyOrder("signed", "client");
+        assertThat(file.getObjectKey()).endsWith(".pdf");
+        verifyNoInteractions(objectStorage);
+        verify(auditService).record(
+                ownerId,
+                file.getId(),
+                "signed-contract.pdf",
+                AuditAction.FILE_METADATA_UPDATED
+        );
+    }
 }

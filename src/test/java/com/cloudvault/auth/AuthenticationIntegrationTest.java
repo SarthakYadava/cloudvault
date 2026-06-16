@@ -22,6 +22,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -153,6 +154,59 @@ class AuthenticationIntegrationTest {
                 .andExpect(status().isNotFound());
 
         verifyNoInteractions(objectStorage);
+    }
+
+    @Test
+    void userOrganizesAndFiltersOwnedFiles() throws Exception {
+        String ownerToken = token(register(
+                "Owner",
+                "owner@example.com",
+                "StrongPass123"
+        ));
+        UserAccount owner = userRepository.findByEmail("owner@example.com")
+                .orElseThrow();
+        StoredFile file = fileRepository.save(StoredFile.createAvailable(
+                owner.getId(),
+                "client-scan.pdf",
+                "users/" + owner.getId() + "/files/" + UUID.randomUUID() + ".pdf",
+                "application/pdf",
+                100
+        ));
+
+        mockMvc.perform(patch("/api/files/{id}/metadata", file.getId())
+                        .header("Authorization", "Bearer " + ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name":"signed-agreement.pdf",
+                                  "folder":"Contracts",
+                                  "tags":["signed","acme"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.originalName").value("signed-agreement.pdf"))
+                .andExpect(jsonPath("$.folder").value("Contracts"))
+                .andExpect(jsonPath("$.tags.length()").value(2));
+
+        mockMvc.perform(get("/api/files")
+                        .param("folder", "Contracts")
+                        .param("tag", "acme")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].originalName")
+                        .value("signed-agreement.pdf"));
+
+        mockMvc.perform(get("/api/files/folders")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0]").value("Contracts"));
+
+        mockMvc.perform(get("/api/files")
+                        .param("folder", "Tax")
+                        .header("Authorization", "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     @Test

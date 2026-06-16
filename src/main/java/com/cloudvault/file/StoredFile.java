@@ -2,12 +2,17 @@ package com.cloudvault.file;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -39,6 +44,17 @@ public class StoredFile {
     @Column(name = "uploaded_at", nullable = false)
     private Instant uploadedAt;
 
+    @Column(nullable = false, length = 80)
+    private String folder;
+
+    @ElementCollection
+    @CollectionTable(
+            name = "stored_file_tags",
+            joinColumns = @JoinColumn(name = "file_id")
+    )
+    @Column(name = "tag", nullable = false, length = 30)
+    private Set<String> tags = new LinkedHashSet<>();
+
     protected StoredFile() {
     }
 
@@ -60,6 +76,7 @@ public class StoredFile {
         this.sizeBytes = sizeBytes;
         this.status = status;
         this.uploadedAt = uploadedAt;
+        this.folder = "Unfiled";
     }
 
     public static StoredFile createAvailable(
@@ -104,6 +121,13 @@ public class StoredFile {
         this.status = FileStatus.AVAILABLE;
     }
 
+    public void updateMetadata(String name, String folder, Set<String> tags) {
+        this.originalName = name;
+        this.folder = folder;
+        this.tags.clear();
+        this.tags.addAll(tags);
+    }
+
     public UUID getId() {
         return id;
     }
@@ -134,5 +158,13 @@ public class StoredFile {
 
     public Instant getUploadedAt() {
         return uploadedAt;
+    }
+
+    public String getFolder() {
+        return folder;
+    }
+
+    public Set<String> getTags() {
+        return Set.copyOf(tags);
     }
 }

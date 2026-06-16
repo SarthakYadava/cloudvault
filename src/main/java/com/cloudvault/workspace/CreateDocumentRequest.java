@@ -10,6 +10,7 @@ public record CreateDocumentRequest(
         @NotBlank @Size(max = 160) String title,
         @Size(max = 1000) String description,
         @Email String assigneeEmail,
-        LocalDate dueDate
+        LocalDate dueDate,
+        DocumentCategory category
 ) {
 }

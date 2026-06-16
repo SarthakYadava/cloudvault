@@ -1027,6 +1027,66 @@ select:focus {
     white-space: nowrap;
 }
 
+.file-title {
+    min-width: 0;
+}
+
+.file-tags {
+    display: flex;
+    max-width: 24rem;
+    gap: 0.25rem;
+    margin-top: 0.28rem;
+    overflow: hidden;
+}
+
+.file-tags button {
+    padding: 0.14rem 0.35rem;
+    border: 0;
+    border-radius: 999px;
+    color: var(--burgundy);
+    background: var(--burgundy-soft);
+    font-size: 0.52rem;
+    white-space: nowrap;
+}
+
+.folder-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--ink);
+    font-size: 0.68rem;
+}
+
+.folder-label svg {
+    width: 0.85rem;
+    height: 0.85rem;
+    color: var(--burgundy);
+}
+
+.active-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: -0.35rem 0 0.7rem;
+    font-size: 0.65rem;
+}
+
+.active-filter span {
+    padding: 0.28rem 0.5rem;
+    border-radius: 999px;
+    color: var(--burgundy);
+    background: var(--burgundy-soft);
+    font-weight: 700;
+}
+
+.active-filter button {
+    padding: 0.2rem;
+    border: 0;
+    color: var(--ink-soft);
+    background: transparent;
+    font-size: 0.62rem;
+}
+
 .file-badge {
     display: grid;
     width: 2.2rem;
@@ -1263,6 +1323,61 @@ select:focus {
     color: var(--ink);
     background: #fff;
     font-size: 0.72rem;
+}
+
+.request-form > div {
+    display: grid;
+    grid-template-columns: 0.85fr 1fr 0.85fr auto;
+}
+
+.workspace-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.38rem;
+    margin-top: 0.65rem;
+}
+
+.workspace-metrics > span {
+    display: grid;
+    gap: 0.12rem;
+    padding: 0.48rem;
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.workspace-metrics strong {
+    font-size: 0.82rem;
+}
+
+.workspace-metrics small {
+    color: var(--ink-soft);
+    font-size: 0.54rem;
+}
+
+.workspace-metrics > span.danger {
+    border-color: #f1b8be;
+    color: var(--danger);
+    background: var(--danger-soft);
+}
+
+.request-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+    margin-top: 0.65rem;
+}
+
+.request-filters select {
+    min-width: 0;
+    min-height: 2.2rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    outline: none;
+    color: var(--ink);
+    background: #fff;
+    font-size: 0.64rem;
 }
 
 .inline-workspace-form input:focus,
@@ -1509,11 +1624,17 @@ select:focus {
     border-top: 1px solid var(--line-soft);
 }
 
-.stacked-workspace-form > div,
-.request-form > div {
+.stacked-workspace-form > div {
     display: flex;
     align-items: center;
     gap: 0.48rem;
+}
+
+.request-form > div {
+    display: grid;
+    align-items: center;
+    gap: 0.48rem;
+    grid-template-columns: 0.85fr 1fr 0.85fr auto;
 }
 
 .stacked-workspace-form .invite-copy-row {
@@ -1736,6 +1857,32 @@ select:focus {
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.97);
     box-shadow: 0 30px 100px rgba(20, 8, 14, 0.28);
+}
+
+.metadata-dialog {
+    width: min(31rem, 100%);
+}
+
+.metadata-dialog form {
+    margin-top: 1.2rem;
+}
+
+.metadata-dialog .field select {
+    width: 100%;
+    margin-top: 0.45rem;
+    padding: 0.82rem 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    outline: none;
+    color: var(--ink);
+    background: #fff;
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.55rem;
+    margin-top: 1.2rem;
 }
 
 .sheet-header {
@@ -2002,13 +2149,17 @@ select:focus {
 
     .file-table th:nth-child(2),
     .file-table td:nth-child(2),
-    .file-table th:nth-child(4),
-    .file-table td:nth-child(4) {
+    .file-table th:nth-child(5),
+    .file-table td:nth-child(5) {
         display: none;
     }
 
     .workspace-columns {
         grid-template-columns: 1fr;
+    }
+
+    .request-form > div {
+        grid-template-columns: 1fr 1fr;
     }
 }
 
@@ -2050,9 +2201,19 @@ select:focus {
     .copy-row,
     .inline-workspace-form,
     .stacked-workspace-form > div,
-    .request-form > div {
+    .request-form > div,
+    .dialog-actions {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .request-form > div {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .workspace-metrics {
+        grid-template-columns: 1fr 1fr;
     }
 
     .workspace-panel {

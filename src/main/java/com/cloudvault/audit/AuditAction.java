@@ -2,6 +2,7 @@ package com.cloudvault.audit;
 
 public enum AuditAction {
     FILE_UPLOADED,
+    FILE_METADATA_UPDATED,
     DOWNLOAD_LINK_CREATED,
     FILE_DELETED,
     SHARE_LINK_CREATED,

@@ -49,6 +49,7 @@ public class WorkspaceEmailNotifier {
                         A document has been requested from you in the "%s" workspace.
 
                         Request: %s
+                        Category: %s
                         Due: %s
                         Instructions: %s
 
@@ -56,6 +57,7 @@ public class WorkspaceEmailNotifier {
                         """.formatted(
                         workspaceName,
                         request.getTitle(),
+                        request.getCategory().name().toLowerCase(),
                         dueDate(request),
                         request.getDescription() == null
                                 ? "No additional instructions."

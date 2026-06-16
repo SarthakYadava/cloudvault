@@ -228,7 +228,10 @@ public class WorkspaceService {
                         normalizeDescription(request.description()),
                         assignee == null ? null : assignee.getId(),
                         userId,
-                        request.dueDate()
+                        request.dueDate(),
+                        request.category() == null
+                                ? DocumentCategory.GENERAL
+                                : request.category()
                 )
         );
         emailNotifier.requestAssigned(documentRequest, assignee);
@@ -442,6 +445,19 @@ public class WorkspaceService {
                 requestRepository.countByWorkspaceIdAndStatus(
                         workspace.getId(),
                         DocumentRequestStatus.PENDING
+                ),
+                requestRepository.countByWorkspaceIdAndStatus(
+                        workspace.getId(),
+                        DocumentRequestStatus.SUBMITTED
+                ),
+                requestRepository.countByWorkspaceIdAndStatus(
+                        workspace.getId(),
+                        DocumentRequestStatus.APPROVED
+                ),
+                requestRepository.countByWorkspaceIdAndStatusAndDueDateBefore(
+                        workspace.getId(),
+                        DocumentRequestStatus.PENDING,
+                        LocalDate.now()
                 ),
                 workspace.getCreatedAt()
         );

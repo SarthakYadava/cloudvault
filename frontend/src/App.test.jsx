@@ -28,6 +28,7 @@ describe("CloudVault React application", () => {
         }));
         vi.stubGlobal("fetch", vi.fn(async url => {
             if (String(url).startsWith("/api/files")) {
+                if (String(url) === "/api/files/folders") return jsonResponse([]);
                 return jsonResponse({content: [], totalPages: 0, totalElements: 0});
             }
             if (String(url).startsWith("/api/activity")) {
@@ -60,6 +61,7 @@ describe("CloudVault React application", () => {
         let workspaceReads = 0;
         const fetchMock = vi.fn(async (url, options = {}) => {
             if (String(url).startsWith("/api/files")) {
+                if (String(url) === "/api/files/folders") return jsonResponse([]);
                 return jsonResponse({content: [], totalPages: 0, totalElements: 0});
             }
             if (String(url).startsWith("/api/activity")) {
@@ -133,6 +135,7 @@ describe("CloudVault React application", () => {
         };
         const fetchMock = vi.fn(async (url, options = {}) => {
             if (String(url).startsWith("/api/files")) {
+                if (String(url) === "/api/files/folders") return jsonResponse([]);
                 return jsonResponse({content: [], totalPages: 0, totalElements: 0});
             }
             if (String(url).startsWith("/api/activity")) {
@@ -214,6 +217,7 @@ describe("CloudVault React application", () => {
                 });
             }
             if (String(url).startsWith("/api/files")) {
+                if (String(url) === "/api/files/folders") return jsonResponse([]);
                 return jsonResponse({content: [], totalPages: 0, totalElements: 0});
             }
             if (String(url).startsWith("/api/activity")) {

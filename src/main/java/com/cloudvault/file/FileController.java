@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,6 +24,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -54,10 +56,37 @@ public class FileController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "") String query,
+            @RequestParam(defaultValue = "") String folder,
+            @RequestParam(defaultValue = "") String tag,
             @RequestParam(defaultValue = "uploadedAt") String sort,
             @RequestParam(defaultValue = "desc") String direction
     ) {
-        return fileService.list(userId(jwt), page, size, query, sort, direction);
+        return fileService.list(
+                userId(jwt),
+                page,
+                size,
+                query,
+                folder,
+                tag,
+                sort,
+                direction
+        );
+    }
+
+    @GetMapping("/folders")
+    @Operation(summary = "List the current user's document folders")
+    public List<String> listFolders(@AuthenticationPrincipal Jwt jwt) {
+        return fileService.listFolders(userId(jwt));
+    }
+
+    @PatchMapping("/{id}/metadata")
+    @Operation(summary = "Rename and organize a file")
+    public FileResponse updateMetadata(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateFileMetadataRequest request
+    ) {
+        return fileService.updateMetadata(userId(jwt), id, request);
     }
 
     @PostMapping("/upload-requests")

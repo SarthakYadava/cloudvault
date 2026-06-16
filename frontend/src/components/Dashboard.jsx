@@ -3,6 +3,7 @@ import {apiFetch, uploadWithProgress} from "../api";
 import {Brand, Icon} from "../icons";
 import ShareDialog from "./ShareDialog";
 import WorkspacePanel from "./WorkspacePanel";
+import FileMetadataDialog from "./FileMetadataDialog";
 
 const PAGE_SIZE = 20;
 const ALLOWED_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "text/plain"]);
@@ -11,11 +12,14 @@ export default function Dashboard({session, onLogout, notify}) {
     const {token, user} = session;
     const fileInput = useRef(null);
     const [files, setFiles] = useState([]);
+    const [folders, setFolders] = useState([]);
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
     const [searchInput, setSearchInput] = useState("");
     const [query, setQuery] = useState("");
+    const [folder, setFolder] = useState("");
+    const [tag, setTag] = useState("");
     const [sort, setSort] = useState("uploadedAt,desc");
     const [fileMessage, setFileMessage] = useState("");
     const [activity, setActivity] = useState([]);
@@ -23,6 +27,7 @@ export default function Dashboard({session, onLogout, notify}) {
     const [upload, setUpload] = useState(null);
     const [dragging, setDragging] = useState(false);
     const [shareFile, setShareFile] = useState(null);
+    const [organizeFile, setOrganizeFile] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
 
     const handleError = useCallback(error => {
@@ -40,6 +45,8 @@ export default function Dashboard({session, onLogout, notify}) {
             page,
             size: PAGE_SIZE,
             query,
+            folder,
+            tag,
             sort: sortBy,
             direction
         });
@@ -51,7 +58,7 @@ export default function Dashboard({session, onLogout, notify}) {
         } catch (error) {
             if (!handleError(error)) setFileMessage(error.message);
         }
-    }, [handleError, page, query, sort, token]);
+    }, [folder, handleError, page, query, sort, tag, token]);
 
     const loadActivity = useCallback(async () => {
         setActivityMessage("");
@@ -62,6 +69,16 @@ export default function Dashboard({session, onLogout, notify}) {
             if (!handleError(error)) setActivityMessage(error.message);
         }
     }, [handleError, token]);
+
+    const loadFolders = useCallback(async () => {
+        try {
+            setFolders(await apiFetch(token, "/api/files/folders"));
+        } catch (error) {
+            if (!handleError(error)) {
+                notify("Folders unavailable", error.message, true);
+            }
+        }
+    }, [handleError, notify, token]);
 
     useEffect(() => {
         const timeout = window.setTimeout(() => {
@@ -78,6 +95,10 @@ export default function Dashboard({session, onLogout, notify}) {
     useEffect(() => {
         loadActivity();
     }, [loadActivity]);
+
+    useEffect(() => {
+        loadFolders();
+    }, [loadFolders]);
 
     function chooseFile() {
         fileInput.current?.click();
@@ -106,7 +127,7 @@ export default function Dashboard({session, onLogout, notify}) {
             }
         } finally {
             setPage(0);
-            await Promise.all([loadFiles(), loadActivity()]);
+            await Promise.all([loadFiles(), loadActivity(), loadFolders()]);
             window.setTimeout(() => setUpload(null), 700);
         }
     }
@@ -144,8 +165,12 @@ export default function Dashboard({session, onLogout, notify}) {
         try {
             await apiFetch(token, `/api/files/${file.id}`, {method: "DELETE"});
             notify("File deleted", file.originalName);
-            if (files.length === 1 && page > 0) setPage(current => current - 1);
-            else await loadFiles();
+            if (files.length === 1 && page > 0) {
+                setPage(current => current - 1);
+                await loadFolders();
+            } else {
+                await Promise.all([loadFiles(), loadFolders()]);
+            }
             await loadActivity();
         } catch (error) {
             if (!handleError(error)) notify("Delete failed", error.message, true);
@@ -158,7 +183,6 @@ export default function Dashboard({session, onLogout, notify}) {
     }
 
     const countLabel = `${totalElements} ${totalElements === 1 ? "document" : "documents"}${query ? ` matching "${query}"` : " in your vault"}`;
-
     return (
         <main className="app-shell">
             {menuOpen && <button className="mobile-overlay" aria-label="Close navigation" onClick={() => setMenuOpen(false)}/>}
@@ -287,8 +311,24 @@ export default function Dashboard({session, onLogout, notify}) {
                                     <option value="size,desc">Largest first</option>
                                     <option value="size,asc">Smallest first</option>
                                 </select>
+                                <select value={folder} aria-label="Filter by folder" onChange={event => {
+                                    setFolder(event.target.value);
+                                    setPage(0);
+                                }}>
+                                    <option value="">All folders</option>
+                                    {["Unfiled", "Contracts", "Tax", "Identity", "Reports", ...folders]
+                                        .filter((value, index, values) => values.indexOf(value) === index)
+                                        .map(value => <option value={value} key={value}>{value}</option>)}
+                                </select>
                             </div>
                         </div>
+
+                        {tag && (
+                            <div className="active-filter">
+                                <span>Tag: {tag}</span>
+                                <button type="button" onClick={() => { setTag(""); setPage(0); }}>Clear</button>
+                            </div>
+                        )}
 
                         {fileMessage && <div className="form-message" role="alert">{fileMessage}</div>}
 
@@ -302,15 +342,34 @@ export default function Dashboard({session, onLogout, notify}) {
                         ) : (
                             <div className="file-table-wrap">
                                 <table className="file-table">
-                                    <thead><tr><th>Name</th><th>Status</th><th>Size</th><th>Uploaded</th><th><span className="sr-only">Actions</span></th></tr></thead>
+                                    <thead><tr><th>Name</th><th>Folder</th><th>Status</th><th>Size</th><th>Uploaded</th><th><span className="sr-only">Actions</span></th></tr></thead>
                                     <tbody>
                                     {files.map(file => (
                                         <tr key={file.id}>
-                                            <td><div className="file-name"><span className="file-badge">{fileExtension(file.originalName)}</span><strong title={file.originalName}>{file.originalName}</strong></div></td>
+                                            <td>
+                                                <div className="file-name">
+                                                    <span className="file-badge">{fileExtension(file.originalName)}</span>
+                                                    <span className="file-title">
+                                                        <strong title={file.originalName}>{file.originalName}</strong>
+                                                        {file.tags?.length > 0 && (
+                                                            <small className="file-tags">
+                                                                {file.tags.map(fileTag => (
+                                                                    <button type="button" key={fileTag} onClick={() => {
+                                                                        setTag(fileTag);
+                                                                        setPage(0);
+                                                                    }}>{fileTag}</button>
+                                                                ))}
+                                                            </small>
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td><span className="folder-label"><Icon name="folder"/>{file.folder || "Unfiled"}</span></td>
                                             <td><span className={`status-pill ${file.status.toLowerCase()}`}>{file.status}</span></td>
                                             <td>{formatBytes(file.sizeBytes)}</td>
                                             <td>{formatDate(file.uploadedAt)}</td>
                                             <td className="actions-cell">
+                                                <button className="table-action" type="button" aria-label={`Organize ${file.originalName}`} onClick={() => setOrganizeFile(file)}><Icon name="edit"/></button>
                                                 <button className="table-action" type="button" aria-label={`Share ${file.originalName}`} disabled={file.status !== "AVAILABLE"} onClick={() => setShareFile(file)}><Icon name="share"/></button>
                                                 <button className="table-action" type="button" aria-label={`Download ${file.originalName}`} disabled={file.status !== "AVAILABLE"} onClick={() => downloadFile(file)}><Icon name="download"/></button>
                                                 <button className="table-action danger" type="button" aria-label={`Delete ${file.originalName}`} onClick={() => deleteFile(file)}><Icon name="trash"/></button>
@@ -370,6 +429,19 @@ export default function Dashboard({session, onLogout, notify}) {
                     notify={notify}
                 />
             )}
+            {organizeFile && (
+                <FileMetadataDialog
+                    file={organizeFile}
+                    token={token}
+                    folders={folders}
+                    onClose={() => setOrganizeFile(null)}
+                    onSaved={() => {
+                        setOrganizeFile(null);
+                        Promise.all([loadFiles(), loadFolders()]);
+                    }}
+                    notify={notify}
+                />
+            )}
         </main>
     );
 }
@@ -412,6 +484,7 @@ function formatDateTime(value) {
 function activityDetails(action) {
     return {
         FILE_UPLOADED: {code: "UP", label: "Uploaded to private storage"},
+        FILE_METADATA_UPDATED: {code: "ORG", label: "Document details updated"},
         DOWNLOAD_LINK_CREATED: {code: "DL", label: "Secure download requested"},
         FILE_DELETED: {code: "DEL", label: "Removed from the vault"},
         SHARE_LINK_CREATED: {code: "SH", label: "Expiring share link created"},

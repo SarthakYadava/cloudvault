@@ -15,6 +15,8 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
     const [inviteRole, setInviteRole] = useState("CLIENT");
     const [latestInviteUrl, setLatestInviteUrl] = useState("");
     const [requestForm, setRequestForm] = useState(emptyRequest());
+    const [requestStatusFilter, setRequestStatusFilter] = useState("");
+    const [requestCategoryFilter, setRequestCategoryFilter] = useState("");
     const [busy, setBusy] = useState(false);
     const [uploadingRequestId, setUploadingRequestId] = useState(null);
 
@@ -24,6 +26,13 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
     );
     const canManage = selected && selected.role !== "CLIENT";
     const isOwner = selected?.role === "OWNER";
+    const visibleRequests = useMemo(
+        () => requests.filter(request =>
+            (!requestStatusFilter || request.status === requestStatusFilter)
+            && (!requestCategoryFilter || request.category === requestCategoryFilter)
+        ),
+        [requestCategoryFilter, requestStatusFilter, requests]
+    );
 
     const loadWorkspaces = useCallback(async preferredId => {
         try {
@@ -69,6 +78,8 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
 
     useEffect(() => {
         setLatestInviteUrl("");
+        setRequestStatusFilter("");
+        setRequestCategoryFilter("");
         loadWorkspaceDetails(selectedId, selected?.role);
     }, [loadWorkspaceDetails, selected?.role, selectedId]);
 
@@ -159,7 +170,8 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                     title: requestForm.title.trim(),
                     description: requestForm.description.trim() || null,
                     assigneeEmail: requestForm.assigneeEmail || null,
-                    dueDate: requestForm.dueDate || null
+                    dueDate: requestForm.dueDate || null,
+                    category: requestForm.category
                 })
             });
             setRequestForm(emptyRequest());
@@ -369,11 +381,21 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                                         <div><strong>Document requests</strong><span>{requests.length} tracked items</span></div>
                                     </div>
 
+                                    <div className="workspace-metrics">
+                                        <Metric label="Pending" value={selected.pendingRequestCount || 0}/>
+                                        <Metric label="Submitted" value={selected.submittedRequestCount || 0}/>
+                                        <Metric label="Approved" value={selected.approvedRequestCount || 0}/>
+                                        <Metric label="Overdue" value={selected.overdueRequestCount || 0} danger/>
+                                    </div>
+
                                     {canManage && (
                                         <form className="request-form" onSubmit={createRequest}>
                                             <input required maxLength="160" value={requestForm.title} placeholder="Signed engagement letter" onChange={event => setRequestForm(current => ({...current, title: event.target.value}))}/>
                                             <textarea maxLength="1000" value={requestForm.description} placeholder="Add instructions for the client" onChange={event => setRequestForm(current => ({...current, description: event.target.value}))}/>
                                             <div>
+                                                <select value={requestForm.category} aria-label="Request category" onChange={event => setRequestForm(current => ({...current, category: event.target.value}))}>
+                                                    {categoryOptions().map(option => <option value={option.value} key={option.value}>{option.label}</option>)}
+                                                </select>
                                                 <select value={requestForm.assigneeEmail} onChange={event => setRequestForm(current => ({...current, assigneeEmail: event.target.value}))}>
                                                     <option value="">Any member</option>
                                                     {members.filter(member => member.role !== "OWNER").map(member => (
@@ -386,14 +408,31 @@ export default function WorkspacePanel({token, user, notify, handleError}) {
                                         </form>
                                     )}
 
+                                    {requests.length > 0 && (
+                                        <div className="request-filters">
+                                            <select aria-label="Filter requests by status" value={requestStatusFilter} onChange={event => setRequestStatusFilter(event.target.value)}>
+                                                <option value="">All statuses</option>
+                                                <option value="PENDING">Pending</option>
+                                                <option value="SUBMITTED">Submitted</option>
+                                                <option value="APPROVED">Approved</option>
+                                            </select>
+                                            <select aria-label="Filter requests by category" value={requestCategoryFilter} onChange={event => setRequestCategoryFilter(event.target.value)}>
+                                                <option value="">All categories</option>
+                                                {categoryOptions().map(option => <option value={option.value} key={option.value}>{option.label}</option>)}
+                                            </select>
+                                        </div>
+                                    )}
+
                                     {requests.length === 0 ? (
                                         <p className="workspace-request-empty">No document requests yet.</p>
+                                    ) : visibleRequests.length === 0 ? (
+                                        <p className="workspace-request-empty">No requests match these filters.</p>
                                     ) : (
                                         <div className="request-list">
-                                            {requests.map(request => (
+                                            {visibleRequests.map(request => (
                                                 <article className="request-card" key={request.id}>
                                                     <div className="request-card-top">
-                                                        <div><strong>{request.title}</strong><span>{request.assigneeName || "Any workspace member"}</span></div>
+                                                        <div><strong>{request.title}</strong><span>{categoryLabel(request.category)} / {request.assigneeName || "Any workspace member"}</span></div>
                                                         <span className={`request-status ${request.status.toLowerCase()}`}>{request.status}</span>
                                                     </div>
                                                     {request.description && <p>{request.description}</p>}
@@ -485,7 +524,25 @@ function validateSubmission(file) {
 }
 
 function emptyRequest() {
-    return {title: "", description: "", assigneeEmail: "", dueDate: ""};
+    return {title: "", description: "", assigneeEmail: "", dueDate: "", category: "GENERAL"};
+}
+
+function Metric({label, value, danger = false}) {
+    return <span className={danger && value > 0 ? "danger" : ""}><strong>{value}</strong><small>{label}</small></span>;
+}
+
+function categoryOptions() {
+    return [
+        {value: "GENERAL", label: "General"},
+        {value: "CONTRACTS", label: "Contracts"},
+        {value: "TAX", label: "Tax"},
+        {value: "IDENTITY", label: "Identity"},
+        {value: "REPORTS", label: "Reports"}
+    ];
+}
+
+function categoryLabel(value) {
+    return categoryOptions().find(option => option.value === value)?.label || "General";
 }
 
 function initials(name) {

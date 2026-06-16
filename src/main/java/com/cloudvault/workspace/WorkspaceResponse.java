@@ -9,6 +9,9 @@ public record WorkspaceResponse(
         WorkspaceRole role,
         long memberCount,
         long pendingRequestCount,
+        long submittedRequestCount,
+        long approvedRequestCount,
+        long overdueRequestCount,
         Instant createdAt
 ) {
 }

@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.Locale;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -159,6 +161,8 @@ public class FileService {
             int page,
             int size,
             String query,
+            String folder,
+            String tag,
             String sortBy,
             String direction
     ) {
@@ -173,14 +177,45 @@ public class FileService {
         if (normalizedQuery.length() > 100) {
             throw new InvalidFileException("Search query cannot exceed 100 characters.");
         }
+        String normalizedFolder = normalizeFilter(folder, 80, "Folder");
+        String normalizedTag = normalizeFilter(tag, 30, "Tag");
 
         Sort sort = Sort.by(parseDirection(direction), parseSortProperty(sortBy));
         return repository.searchByOwner(
                         ownerId,
                         normalizedQuery,
+                        normalizedFolder,
+                        normalizedTag,
                         PageRequest.of(page, size, sort)
                 )
                 .map(FileResponse::from);
+    }
+
+    @Transactional
+    public FileResponse updateMetadata(
+            UUID ownerId,
+            UUID id,
+            UpdateFileMetadataRequest request
+    ) {
+        StoredFile file = findFile(ownerId, id);
+        String name = cleanFilename(request.name().trim());
+        requireSameExtension(file.getOriginalName(), name);
+        String folder = normalizeFolder(request.folder());
+        Set<String> tags = normalizeTags(request.tags());
+        file.updateMetadata(name, folder, tags);
+        StoredFile saved = repository.save(file);
+        auditService.record(
+                ownerId,
+                saved.getId(),
+                saved.getOriginalName(),
+                AuditAction.FILE_METADATA_UPDATED
+        );
+        return FileResponse.from(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> listFolders(UUID ownerId) {
+        return repository.findDistinctFoldersByOwner(ownerId);
     }
 
     public FileDownload download(UUID ownerId, UUID id) {
@@ -293,6 +328,50 @@ public class FileService {
 
     private String normalizeContentType(String contentType) {
         return contentType.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeFolder(String folder) {
+        String normalized = folder.trim().replaceAll("\\s+", " ");
+        if (normalized.isBlank()) {
+            return "Unfiled";
+        }
+        return normalized;
+    }
+
+    private Set<String> normalizeTags(Set<String> tags) {
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String tag : tags) {
+            String value = tag.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+            if (!value.isBlank()) {
+                normalized.add(value);
+            }
+        }
+        if (normalized.size() > 8) {
+            throw new InvalidFileException("A file can have at most 8 tags.");
+        }
+        return normalized;
+    }
+
+    private String normalizeFilter(String value, int maxLength, String label) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.length() > maxLength) {
+            throw new InvalidFileException(
+                    label + " filter cannot exceed " + maxLength + " characters."
+            );
+        }
+        return normalized;
+    }
+
+    private void requireSameExtension(String currentName, String nextName) {
+        String currentExtension = StringUtils.getFilenameExtension(currentName);
+        String nextExtension = StringUtils.getFilenameExtension(nextName);
+        if (currentExtension == null
+                ? nextExtension != null
+                : !currentExtension.equalsIgnoreCase(nextExtension)) {
+            throw new InvalidFileException(
+                    "Keep the original file extension when renaming a document."
+            );
+        }
     }
 
     private String cleanFilename(String filename) {

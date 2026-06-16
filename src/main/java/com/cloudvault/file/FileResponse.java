@@ -1,6 +1,7 @@
 package com.cloudvault.file;
 
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 
 public record FileResponse(
@@ -9,7 +10,9 @@ public record FileResponse(
         String contentType,
         long sizeBytes,
         FileStatus status,
-        Instant uploadedAt
+        Instant uploadedAt,
+        String folder,
+        Set<String> tags
 ) {
 
     static FileResponse from(StoredFile file) {
@@ -19,7 +22,9 @@ public record FileResponse(
                 file.getContentType(),
                 file.getSizeBytes(),
                 file.getStatus(),
-                file.getUploadedAt()
+                file.getUploadedAt(),
+                file.getFolder(),
+                file.getTags()
         );
     }
 }

@@ -24,4 +24,10 @@ public interface DocumentRequestRepository extends JpaRepository<DocumentRequest
             UUID workspaceId,
             DocumentRequestStatus status
     );
+
+    long countByWorkspaceIdAndStatusAndDueDateBefore(
+            UUID workspaceId,
+            DocumentRequestStatus status,
+            LocalDate date
+    );
 }
