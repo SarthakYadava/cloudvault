@@ -250,13 +250,16 @@ svg {
 
 .auth-layout {
     display: grid;
+    height: 100vh;
     min-height: 100vh;
     grid-template-columns: minmax(0, 1.08fr) minmax(390px, 0.92fr);
+    overflow: hidden;
 }
 
 .auth-story {
     position: relative;
     display: flex;
+    height: 100vh;
     min-height: 100vh;
     flex-direction: column;
     justify-content: space-between;
@@ -366,9 +369,13 @@ svg {
 
 .auth-panel {
     display: grid;
+    height: 100vh;
+    min-height: 0;
     place-items: center;
+    overflow-y: auto;
     padding: clamp(1.5rem, 6vw, 6rem);
     background: var(--background);
+    scrollbar-gutter: stable;
 }
 
 .auth-card {
@@ -378,6 +385,10 @@ svg {
     border-radius: var(--radius-lg);
     background: rgba(255, 255, 255, 0.94);
     box-shadow: var(--shadow-lg);
+}
+
+.auth-panel .auth-card {
+    margin: auto 0;
 }
 
 .invite-auth-banner {
@@ -2070,10 +2081,13 @@ select:focus {
 
 @media (max-width: 780px) {
     .auth-layout {
+        height: auto;
         grid-template-columns: 1fr;
+        overflow: visible;
     }
 
     .auth-story {
+        height: auto;
         min-height: auto;
         padding-bottom: 3rem;
     }
@@ -2087,6 +2101,8 @@ select:focus {
     }
 
     .auth-panel {
+        height: auto;
+        overflow: visible;
         padding: 1rem;
     }
 
