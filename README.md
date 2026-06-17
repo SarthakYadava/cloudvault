@@ -186,6 +186,76 @@ Useful URLs:
 - API specification: `http://localhost:8080/v3/api-docs`
 - Health check: `http://localhost:8080/actuator/health`
 
+## Deployment
+
+CloudVault is designed to deploy as one Spring Boot service: the React app is
+built by Vite, copied into the Spring Boot JAR, and served from the same public
+URL as the API.
+
+Recommended hosted setup:
+
+- Render Web Service for the Spring Boot application.
+- Neon PostgreSQL for the production database.
+- Private Amazon S3 bucket for uploaded document storage.
+- GitHub for source control and Render auto-deploys.
+
+This keeps the app hosting outside AWS while still using S3 as the product's
+private storage backend.
+
+### Render Web Service
+
+Create a new Render Web Service from the GitHub repository and use these
+settings:
+
+| Setting | Value |
+| --- | --- |
+| Runtime | Docker |
+| Branch | `main` |
+| Root directory | Leave blank |
+| Dockerfile path | `Dockerfile` |
+| Health check path | `/actuator/health` |
+
+The Dockerfile builds the React frontend, packages the Spring Boot JAR, and
+starts the app with Java 21. Spring Boot reads Render's dynamic `PORT`
+environment variable automatically and falls back to `8080` locally.
+
+### Neon PostgreSQL
+
+Create a Neon project, copy the pooled PostgreSQL connection details, and set
+them on Render as environment variables. The `DB_URL` value must be a JDBC URL:
+
+```text
+DB_URL=jdbc:postgresql://<neon-host>/<database>?sslmode=require
+DB_USERNAME=<neon-user>
+DB_PASSWORD=<neon-password>
+```
+
+Flyway applies the database migrations automatically when the deployed app
+starts.
+
+### Render Environment Variables
+
+Set these variables in Render before the first deploy:
+
+| Variable | Example |
+| --- | --- |
+| `DB_URL` | `jdbc:postgresql://...neon.tech/neondb?sslmode=require` |
+| `DB_USERNAME` | Neon database user |
+| `DB_PASSWORD` | Neon database password |
+| `JWT_SECRET` | Random 32+ character secret |
+| `AWS_REGION` | `eu-north-1` |
+| `S3_BUCKET` | `file-java90` |
+| `AWS_ACCESS_KEY_ID` | IAM access key for the S3-only app user |
+| `AWS_SECRET_ACCESS_KEY` | IAM secret key for the S3-only app user |
+| `APP_BASE_URL` | Render public URL after first deploy |
+| `EMAIL_DELIVERY` | `log` for demo, `smtp` for real email |
+| `MAIL_HEALTH_ENABLED` | `false` |
+| `PRESIGNED_URL_EXPIRATION` | `PT10M` |
+| `JWT_EXPIRATION` | `PT1H` |
+
+After the first successful deploy, copy the Render URL and update
+`APP_BASE_URL` so invitation and share emails point to the deployed app.
+
 ## API
 
 | Method | Endpoint | Purpose |
@@ -290,6 +360,7 @@ Open `http://localhost:8080/` after starting the application. The dashboard:
 | `MAIL_HEALTH_ENABLED` | `false` | Enable the SMTP health probe after SMTP is configured |
 | `DEADLINE_REMINDER_DAYS` | `1` | Days before a due date to send one reminder |
 | `DEADLINE_REMINDER_CRON` | `0 0 9 * * *` | Daily reminder schedule |
+| `PORT` | `8080` | HTTP port, set automatically by hosts such as Render |
 | `DB_URL` | `jdbc:postgresql://localhost:5432/cloudvault` | JDBC URL |
 | `DB_USERNAME` | `cloudvault` | Database user |
 | `DB_PASSWORD` | `cloudvault` | Database password |
@@ -331,7 +402,6 @@ the project production-ready.
 
 ## Roadmap
 
-1. Add workspace folders and document categories.
-2. Add LocalStack and Testcontainers integration tests.
-3. Add malware scanning and content-signature detection.
-4. Deploy the containerized application and database with infrastructure as code.
+1. Add LocalStack and Testcontainers integration tests.
+2. Add malware scanning and content-signature detection.
+3. Add infrastructure-as-code for repeatable deployment.

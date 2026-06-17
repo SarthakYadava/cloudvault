@@ -32,6 +32,6 @@ USER cloudvault
 EXPOSE 8080
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
-    CMD curl --fail --silent http://localhost:8080/actuator/health || exit 1
+    CMD curl --fail --silent "http://localhost:${PORT:-8080}/actuator/health" || exit 1
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
